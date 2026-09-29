@@ -2,7 +2,7 @@
 
 Circuit Extended Firmware is an independent community firmware-patching project for the original Novation Circuit.
 
-The browser uploader includes one prebuilt patched firmware update for owners of the supported original Circuit. Novation firmware remains third-party material and is not covered by this project's MIT license. The source builders still require a user-supplied legitimate stock update and verify it by SHA-256.
+The browser uploader includes one prebuilt patched firmware update for owners of the supported original Circuit. Its optional MIDI CC settings rewrite that image's CC tables in the browser; no other firmware is downloaded. Novation firmware remains third-party material and is not covered by this project's MIT license. The feature builders still require a user-supplied legitimate stock update and verify it by SHA-256. The CC remap builder starts from the uploader's image or a stock update, also verified by SHA-256.
 
 The MIT license applies only to the original source code and documentation in this repository. It does not grant rights to Novation firmware or other third-party material.
 

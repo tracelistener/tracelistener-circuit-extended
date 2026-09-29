@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Add optional MIDI CC numbers to the browser uploader: choose the CCs the synth macros and drum knobs send and respond to.
+- Rewrite only the CC tables of the verified v0.5.0 image, in the browser; the NTS-1 preset changes 19 bytes.
+- Add a Korg NTS-1 preset: Macro 1/2 send CC 54/55 (oscillator shape/alt) and Macro 5/6 send CC 43/44 (filter cutoff/resonance).
+- Swap numbers automatically when a chosen CC is already used on the same channel, and show a note under the field naming the parameter that moves and its new number.
+- Refuse CC 0, 6, 32, 38, 98–101, and 120 and above.
+- Add the `cc-remap/` Python builder and Thumb-emulated verifier, pinned to the same NTS-1 reference hash as the browser.
+- Hardware-test the Korg NTS-1 preset: Macros 1, 2, 5 and 6 send CC 54, 55, 43 and 44. Other maps are emulation-verified.
+
 ## 0.5.0 — 2026-07-31
 
 - Add the per-drum Filter LFO with four triangle and four sawtooth speeds.

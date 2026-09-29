@@ -46,6 +46,26 @@
   a { color: var(--accent); }
   ul { margin: .4rem 0 0; padding-left: 1.1rem; } li { margin: .2rem 0; }
   .danger { border-color: #5a2a2a; background: #24181b; }
+  .tag {
+    display: inline-block; margin-left: .5rem; padding: 0 .5rem; border: 1px solid #5a4630;
+    border-radius: 99px; color: var(--warn); font-size: .7rem; letter-spacing: .06em; vertical-align: 1px;
+  }
+  details > summary { cursor: pointer; color: var(--accent); font-weight: 600; margin-top: .25rem; }
+  #ccPreset { width: auto; }
+  .cc-group {
+    font-size: .76rem; text-transform: uppercase; letter-spacing: .08em; color: var(--dim);
+    margin: 1.1rem 0 .45rem; font-weight: 600;
+  }
+  .cc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem .6rem; }
+  .cc-grid label { display: flex; flex-direction: column; gap: .15rem; font-size: .82rem; color: var(--dim); min-width: 0; }
+  .cc-grid input {
+    font: inherit; color: var(--ink); background: #12141c; border: 1px solid var(--line);
+    border-radius: 8px; padding: .4rem .5rem; width: 100%;
+  }
+  .cc-grid input.changed { border-color: var(--accent); }
+  .cc-grid input.invalid { border-color: var(--bad); }
+  .cc-grid .hint { font-size: .74rem; color: var(--warn); min-height: 1.15em; }
+  #ccResult { margin-top: .8rem; }
 </style>
 </head>
 <body>
@@ -85,8 +105,32 @@
     <p class="note"><a href="firmware/circuit-3592-filter-lfo-shift-automation.syx" download>Download a copy</a></p>
   </div>
 
+  <div class="step" id="sCC" aria-disabled="true">
+    <h2>Optional — MIDI CC numbers <span class="tag">Experimental</span></h2>
+    <p class="note">Choose the CC numbers the synth macros and drum knobs send and respond to, so they can control other gear. Leave them as they are to install the verified firmware unchanged.</p>
+    <details id="ccPanel">
+      <summary>Change CC numbers</summary>
+      <div class="row" style="margin-top: .8rem">
+        <select id="ccPreset" aria-label="CC preset">
+          <option value="stock">Stock numbers</option>
+          <option value="nts1">Korg NTS-1</option>
+          <option value="custom" disabled>Custom</option>
+        </select>
+        <button id="ccReset" class="ghost" type="button">Reset</button>
+      </div>
+      <div class="cc-group">Synth macros — Synth 1 and 2</div>
+      <div class="cc-grid" id="ccSynth"></div>
+      <div class="cc-group">Drum knobs — drum channel</div>
+      <div class="cc-grid" id="ccDrums"></div>
+      <p class="note">Use 1–119, except 6, 32, 38 and 98–101. The new number is used for MIDI out and MIDI in. If another Circuit parameter on the same channel already uses it, the two swap, and a note under the field says which parameter moves where. The knobs still control the Circuit’s own sound too.</p>
+      <p class="note">The Korg NTS-1 preset is tested on hardware. Other maps use the same table edit and are checked against the Circuit’s own MIDI code in emulation. To undo, upload again with stock numbers.</p>
+    </details>
+    <div id="ccResult" class="note" aria-live="polite"></div>
+  </div>
+
   <div class="step" id="s4" aria-disabled="true">
     <h2>Step 3 — Upload</h2>
+    <p class="note" id="uploadWhat">Installs the verified firmware, unchanged.</p>
     <div class="row">
       <button id="send">Start upload</button>
       <button id="cancel" class="ghost" disabled>Cancel</button>
@@ -97,16 +141,29 @@
   </div>
 </main>
 
+<script src="cc-remap.js"></script>
 <script>
 (() => {
   "use strict";
   const $ = id => document.getElementById(id);
-  const state = { access: null, output: null, messages: null, cancel: false };
+  const state = {
+    access: null, output: null, messages: null, cancel: false, uploading: false,
+    base: null, baseMessages: null,
+    controls: null, custom: null, ccBusy: false, ccError: null, ccToken: 0, ccTimer: 0, preset: "stock", downloadUrl: null,
+  };
   const firmwareUrl = "firmware/circuit-3592-filter-lfo-shift-automation.syx";
   const firmwareHash = "7ea9affe4c5310a8c3d84abf6c05b1ee35d4ef9ee6d30bb040711a4eb047745f";
+  const messageCount = 5981;
+  const cc = window.CircuitCC;
 
   const enable = (el, on) => el.setAttribute("aria-disabled", on ? "false" : "true");
   const say = (msg, cls = "") => { $("status").className = "note " + cls; $("status").textContent = msg; };
+  const el = (tag, cls, text) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
 
   const isFirefox = /firefox|fxios/i.test(navigator.userAgent);
   const isSafari = /^((?!chrome|android|crios|edg).)*safari/i.test(navigator.userAgent);
@@ -177,7 +234,9 @@
         .map(b => b.toString(16).padStart(2, "0")).join("");
       if (hash !== firmwareHash) throw new Error("hash mismatch");
       const messages = split(buf);
-      if (messages.length !== 5981) throw new Error("message count mismatch");
+      if (messages.length !== messageCount) throw new Error("message count mismatch");
+      state.base = buf;
+      state.baseMessages = messages;
       state.messages = messages;
       $("fileInfo").innerHTML = '<span class="ok">Firmware ready — 5,981 messages.</span>';
       $("fileHash").textContent = "SHA-256 " + hash;
@@ -185,7 +244,9 @@
     } catch (err) {
       $("fileInfo").innerHTML = '<span class="bad">Firmware could not be verified. Reload the page.</span>';
       $("fileHash").textContent = String(err && err.message || err);
+      return;
     }
+    initCC();
   }
 
   function split(bytes) {
@@ -197,25 +258,184 @@
     return out;
   }
 
-  function checkReady() { enable($("s4"), !!(state.output && state.messages)); }
+  function checkReady() {
+    enable($("s4"), !!(state.output && state.messages && !state.ccBusy && !state.ccError) || state.uploading);
+  }
+
+  /* ---------- Optional MIDI CC numbers ---------- */
+
+  async function initCC() {
+    try {
+      if (!cc) throw new Error("the CC module did not load");
+      const { image } = cc.decodeFirmware(state.base);
+      if (await cc.sha256Hex(image) !== cc.EXTENDED_V050_IMAGE_SHA256) throw new Error("image hash mismatch");
+      cc.checkLayout(image);
+      cc.checkStockCCs(image);
+      state.controls = cc.uiControls(image);
+    } catch (err) {
+      $("ccResult").replaceChildren(el("span", "warn",
+        "CC options are unavailable (" + String(err && err.message || err) + "). The verified firmware can still be installed."));
+      return;
+    }
+    for (const control of state.controls) {
+      const label = el("label", "", control.label);
+      const input = el("input");
+      input.type = "number";
+      input.min = "1";
+      input.max = "119";
+      input.step = "1";
+      input.value = control.stock;
+      input.oninput = scheduleCC;
+      const hint = el("span", "hint");
+      label.append(input, hint);
+      control.input = input;
+      control.hint = hint;
+      $(control.group === "synth" ? "ccSynth" : "ccDrums").append(label);
+    }
+    enable($("sCC"), true);
+    showCC();
+  }
+
+  $("ccPreset").onchange = () => {
+    const preset = cc.PRESETS[$("ccPreset").value];
+    for (const control of state.controls) {
+      control.input.value = preset && control.id in preset.map ? preset.map[control.id] : control.stock;
+    }
+    rebuildCC();
+  };
+  $("ccReset").onclick = () => { $("ccPreset").value = "stock"; $("ccPreset").onchange(); };
+
+  function scheduleCC() {
+    clearTimeout(state.ccTimer);
+    state.ccBusy = true;
+    checkReady();
+    state.ccTimer = setTimeout(rebuildCC, 200);
+  }
+
+  function matchPreset(requests) {
+    for (const [key, preset] of Object.entries(cc.PRESETS)) {
+      const entries = Object.entries(preset.map);
+      if (entries.length === requests.length &&
+          entries.every(([id, value]) => requests.some(([rid, rvalue]) => rid === id && rvalue === value))) return key;
+    }
+    return requests.length ? "custom" : "stock";
+  }
+
+  async function rebuildCC() {
+    clearTimeout(state.ccTimer);
+    const token = ++state.ccToken;
+    const requests = [];
+    let invalid = false;
+    for (const control of state.controls) {
+      const text = control.input.value.trim();
+      const value = Number(text);
+      const reason = text === "" ? "enter 1–119" : cc.reservedReason(value);
+      control.input.classList.toggle("invalid", !!reason);
+      control.input.classList.toggle("changed", !reason && value !== control.stock);
+      control.hint.textContent = reason ? (reason === "not a CC number" ? "use 1–119" : reason) : "";
+      if (reason) invalid = true;
+      else if (value !== control.stock) requests.push([control.id, value]);
+    }
+    state.preset = matchPreset(requests);
+    $("ccPreset").value = state.preset;
+    state.custom = null;
+    state.ccError = null;
+    state.messages = state.baseMessages;
+
+    if (invalid) {
+      state.ccError = "Fix the highlighted numbers, or press Reset to install the verified firmware unchanged.";
+    } else if (requests.length) {
+      state.ccBusy = true;
+      checkReady();
+      try {
+        const build = cc.buildRemappedSysex(state.base, requests);
+        const hash = await cc.sha256Hex(build.sysex);
+        if (token !== state.ccToken) return;
+        const reference = cc.REFERENCE_BUILDS[state.preset];
+        if (reference && reference !== hash) throw new Error("the build does not match the reference " + cc.PRESETS[state.preset].label + " build");
+        const messages = split(build.sysex);
+        if (messages.length !== messageCount) throw new Error("message count mismatch");
+        state.custom = { ...build, hash, reference: !!reference };
+        state.messages = messages;
+        // Note under each field: whose number a choice takes over, or where a displaced knob went.
+        const displaced = new Map(build.changes.filter(c => !c.requested).map(c => [c.part + ":" + c.oldCC, c]));
+        for (const change of build.changes) {
+          const control = state.controls.find(c => c.part === change.part && c.record === change.record);
+          if (!control) continue;
+          const owner = change.requested && displaced.get(change.part + ":" + change.newCC);
+          if (owner) {
+            control.hint.textContent = "takes CC " + change.newCC + " from " + cc.parameterName(owner) + " (now CC " + owner.newCC + ")";
+          } else if (!change.requested) {
+            control.hint.textContent = "now CC " + change.newCC + " (swap)";
+          }
+        }
+      } catch (err) {
+        if (token !== state.ccToken) return;
+        state.ccError = "Could not build this map: " + String(err && err.message || err);
+      }
+    }
+    state.ccBusy = false;
+    showCC();
+    checkReady();
+  }
+
+  function describe(change) {
+    return cc.describeChange(change) + ": CC " + change.oldCC + " → " + change.newCC + (change.requested ? "" : " (swapped)");
+  }
+
+  // Requested moves first, then the parameters they displaced.
+  const ordered = changes => [...changes].sort((a, b) => Number(b.requested) - Number(a.requested));
+
+  function showCC() {
+    const out = $("ccResult");
+    if (state.downloadUrl) { URL.revokeObjectURL(state.downloadUrl); state.downloadUrl = null; }
+    if (state.ccError) {
+      out.replaceChildren(el("span", "bad", state.ccError));
+      $("uploadWhat").textContent = "Fix the MIDI CC numbers above, or reset them, before uploading.";
+      return;
+    }
+    if (!state.custom) {
+      out.replaceChildren(el("span", "", "Stock CC numbers: the verified firmware will be installed unchanged."));
+      $("uploadWhat").textContent = "Installs the verified firmware, unchanged.";
+      return;
+    }
+    const list = el("ul");
+    for (const change of ordered(state.custom.changes)) list.append(el("li", "", describe(change)));
+    const hash = el("p", "note hash mono", "SHA-256 " + state.custom.hash);
+    const extra = el("p", "note");
+    if (state.custom.reference) extra.append(el("span", "ok", "Same bytes as the reference " + cc.PRESETS[state.preset].label + " build. "));
+    state.downloadUrl = URL.createObjectURL(new Blob([state.custom.sysex], { type: "application/octet-stream" }));
+    const link = el("a", "", "Download this build");
+    link.href = state.downloadUrl;
+    link.download = "circuit-extended-v0.5.0-cc-" + state.preset + ".syx";
+    extra.append(link);
+    out.replaceChildren(el("span", "ok", "Custom firmware ready. Only the MIDI CC tables differ from the verified firmware:"), list, hash, extra);
+    $("uploadWhat").textContent = "Installs the verified firmware with your MIDI CC numbers.";
+  }
+
+  /* ---------- Upload ---------- */
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   $("cancel").onclick = () => { state.cancel = true; };
 
   $("send").onclick = async () => {
-    if (!state.output || !state.messages) return;
-    if (!confirm("Upload firmware to “" + state.output.name + "”?\n\nDo not unplug anything until it finishes.")) return;
+    if (!state.output || !state.messages || state.ccBusy || state.ccError) return;
+    const messages = state.messages;
+    const changes = state.custom ? "\n\nIncludes your MIDI CC numbers:\n" + ordered(state.custom.changes).map(describe).join("\n") : "";
+    if (!confirm("Upload firmware to “" + state.output.name + "”?" + changes + "\n\nDo not unplug anything until it finishes.")) return;
 
     state.cancel = false;
+    state.uploading = true;
+    enable($("sCC"), false);
     $("send").disabled = true; $("cancel").disabled = false;
-    const total = state.messages.length;
+    const total = messages.length;
 
     try {
       await sleep(250); // let the port settle before the first message
       for (let i = 0; i < total; i++) {
         if (state.cancel) throw new Error("Cancelled. The Circuit may be in an incomplete state — upload again before using it.");
-        state.output.send(state.messages[i]);
+        state.output.send(messages[i]);
         if (i % 25 === 0 || i === total - 1) {
           $("fill").style.width = ((i + 1) / total * 100) + "%";
           say("Sending " + (i + 1).toLocaleString() + " of " + total.toLocaleString() + "…");
@@ -233,7 +453,9 @@
         say("Failed: the Circuit disconnected. Check the cable, re-enter bootloader mode, and try again.", "bad");
       }
     } finally {
+      state.uploading = false;
       $("send").disabled = false; $("cancel").disabled = true;
+      if (state.controls) enable($("sCC"), true);
     }
   };
 
