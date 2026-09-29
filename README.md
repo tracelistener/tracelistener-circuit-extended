@@ -64,7 +64,7 @@ This follows the Circuit's own layout, where Macros 1–2 are oscillator knobs a
 
 - The new number is used for MIDI out and MIDI in.
 - Both synths share one layout. Each still uses its own MIDI channel, which you set in Settings view (hold Shift while powering on).
-- If another Circuit parameter on that channel already uses the number, the two swap. The NTS-1 preset moves the synth's ring mod level from CC 54 to CC 80.
+- If another Circuit parameter on that channel already uses the number, the two swap. This covers every CC in the Circuit Programmer's Reference, not just the knobs on the page, and a note under the field names the parameter and its new number. The NTS-1 preset moves the synth's ring mod level from CC 54 to CC 80.
 - Use 1–119, except 6, 32, 38 and 98–101. Those carry NRPN, RPN and bank select messages.
 - The knobs still control the Circuit's own sound as well.
 - To undo, upload again with stock numbers.

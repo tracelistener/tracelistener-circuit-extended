@@ -122,7 +122,7 @@
       <div class="cc-grid" id="ccSynth"></div>
       <div class="cc-group">Drum knobs — drum channel</div>
       <div class="cc-grid" id="ccDrums"></div>
-      <p class="note">Use 1–119, except 6, 32, 38 and 98–101. The new number is used for MIDI out and MIDI in. If another Circuit parameter on the same channel already uses it, the two swap. The knobs still control the Circuit’s own sound too.</p>
+      <p class="note">Use 1–119, except 6, 32, 38 and 98–101. The new number is used for MIDI out and MIDI in. If another Circuit parameter on the same channel already uses it, the two swap, and a note under the field says which parameter moves where. The knobs still control the Circuit’s own sound too.</p>
       <p class="note">The Korg NTS-1 preset is tested on hardware. Other maps use the same table edit and are checked against the Circuit’s own MIDI code in emulation. To undo, upload again with stock numbers.</p>
     </details>
     <div id="ccResult" class="note" aria-live="polite"></div>
@@ -357,10 +357,17 @@
         if (messages.length !== messageCount) throw new Error("message count mismatch");
         state.custom = { ...build, hash, reference: !!reference };
         state.messages = messages;
+        // Note under each field: whose number a choice takes over, or where a displaced knob went.
+        const displaced = new Map(build.changes.filter(c => !c.requested).map(c => [c.part + ":" + c.oldCC, c]));
         for (const change of build.changes) {
-          if (change.requested) continue;
           const control = state.controls.find(c => c.part === change.part && c.record === change.record);
-          if (control) control.hint.textContent = "now CC " + change.newCC + " (swap)";
+          if (!control) continue;
+          const owner = change.requested && displaced.get(change.part + ":" + change.newCC);
+          if (owner) {
+            control.hint.textContent = "takes CC " + change.newCC + " from " + cc.parameterName(owner) + " (now CC " + owner.newCC + ")";
+          } else if (!change.requested) {
+            control.hint.textContent = "now CC " + change.newCC + " (swap)";
+          }
         }
       } catch (err) {
         if (token !== state.ccToken) return;

@@ -47,20 +47,21 @@
   const DRUM_PARAM_ALIASES = { filter: "eq" };
   const DRUM_KNOBS = ["pitch", "decay", "distortion", "eq"];
 
+  // Stock synth CC names as written in the Circuit Programmer's Reference Guide.
   const SYNTH_CC_NAMES = {
-    3: "Polyphony mode", 5: "Portamento rate", 9: "Pre-glide", 13: "Keyboard octave",
-    19: "Osc 1 wave", 20: "Osc 1 wave interpolate", 21: "Osc 1 pulse width index",
-    22: "Osc 1 virtual sync depth", 24: "Osc 1 density", 25: "Osc 1 density detune",
-    26: "Osc 1 semitones", 27: "Osc 1 cents", 28: "Osc 1 pitchbend range",
-    29: "Osc 2 wave", 30: "Osc 2 wave interpolate", 31: "Osc 2 pulse width index",
-    33: "Osc 2 virtual sync depth", 35: "Osc 2 density", 36: "Osc 2 density detune",
-    37: "Osc 2 semitones", 39: "Osc 2 cents", 40: "Osc 2 pitchbend range",
-    51: "Osc 1 level", 52: "Osc 2 level", 54: "Ring mod level", 56: "Noise level",
-    58: "Pre-FX level", 59: "Post-FX level", 60: "Filter routing", 63: "Filter drive",
-    65: "Filter drive type", 68: "Filter type", 69: "Filter tracking", 71: "Filter resonance",
-    74: "Filter frequency", 78: "Filter Q normalise", 79: "Env 2 to filter frequency",
-    108: "Env 1 velocity", 73: "Env 1 attack", 75: "Env 1 decay", 70: "Env 1 sustain",
-    72: "Env 1 release", 91: "Distortion level", 93: "Chorus level",
+    3: "polyphony mode", 5: "portamento rate", 9: "pre-glide", 13: "keyboard octave",
+    19: "osc 1 wave", 20: "osc 1 wave interpolate", 21: "osc 1 pulse width index",
+    22: "osc 1 virtual sync depth", 24: "osc 1 density", 25: "osc 1 density detune",
+    26: "osc 1 semitones", 27: "osc 1 cents", 28: "osc 1 pitchbend",
+    29: "osc 2 wave", 30: "osc 2 wave interpolate", 31: "osc 2 pulse width index",
+    33: "osc 2 virtual sync depth", 35: "osc 2 density", 36: "osc 2 density detune",
+    37: "osc 2 semitones", 39: "osc 2 cents", 40: "osc 2 pitchbend",
+    51: "osc 1 level", 52: "osc 2 level", 54: "ring mod level", 56: "noise level",
+    58: "pre FX level", 59: "post FX level", 60: "filter routing", 63: "filter drive",
+    65: "filter drive type", 68: "filter type", 69: "filter tracking", 71: "filter resonance",
+    74: "filter frequency", 78: "filter Q normalize", 79: "env 2 to filter frequency",
+    108: "env 1 velocity", 73: "env 1 attack", 75: "env 1 decay", 70: "env 1 sustain",
+    72: "env 1 release", 91: "distortion level", 93: "chorus level",
   };
 
   const STOCK_CC_FINGERPRINT = {
@@ -375,17 +376,24 @@
     return controls;
   }
 
-  function describeChange(change) {
+  // Name of the parameter a change moves, without the part prefix:
+  // "macro 2", "filter frequency", "Drum 2 pitch".
+  function parameterName(change) {
     if (change.part === "synth") {
       const macro = (change.record - SYNTH_MACRO_FIRST_RECORD) / SYNTH_MACRO_STRIDE;
-      if (Number.isInteger(macro) && macro >= 0 && macro < 8) return "Synth macro " + (macro + 1);
-      return "Synth " + (SYNTH_CC_NAMES[change.oldCC] || "parameter on CC " + change.oldCC).toLowerCase();
+      if (Number.isInteger(macro) && macro >= 0 && macro < 8) return "macro " + (macro + 1);
+      return SYNTH_CC_NAMES[change.oldCC] || "parameter on CC " + change.oldCC;
     }
     if (change.part === "drums") {
       const param = DRUM_PARAMS[change.record % DRUM_PARAMS.length];
       return "Drum " + (Math.floor(change.record / DRUM_PARAMS.length) + 1) + " " + (param === "eq" ? "filter" : param);
     }
-    return "Session parameter on CC " + change.oldCC;
+    return "session parameter on CC " + change.oldCC;
+  }
+
+  function describeChange(change) {
+    const name = parameterName(change);
+    return change.part === "synth" ? "Synth " + name : name.charAt(0).toUpperCase() + name.slice(1);
   }
 
   async function sha256Hex(bytes) {
@@ -397,7 +405,7 @@
     PARTS, PRESETS, REFERENCE_BUILDS, EXTENDED_V050_SYSEX_SHA256, EXTENDED_V050_IMAGE_SHA256,
     reservedReason, isAssignable, splitMessages, decodeFirmware, encodeFirmware,
     checkLayout, checkStockCCs, forwardCCMap, resolveControl, planRemap, applyRemap,
-    expectedOffsets, buildRemappedSysex, uiControls, describeChange, sha256Hex,
+    expectedOffsets, buildRemappedSysex, uiControls, parameterName, describeChange, sha256Hex,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.CircuitCC = api;
