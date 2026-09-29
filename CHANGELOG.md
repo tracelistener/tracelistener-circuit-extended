@@ -7,7 +7,7 @@
 - Add a Korg NTS-1 preset: Macro 1/2 send CC 54/55 (oscillator shape/alt) and Macro 5/6 send CC 43/44 (filter cutoff/resonance).
 - Swap numbers automatically when a chosen CC is already used on the same channel, and refuse CC 0, 6, 32, 38, 98–101, and 120 and above.
 - Add the `cc-remap/` Python builder and Thumb-emulated verifier, pinned to the same NTS-1 reference hash as the browser.
-- Experimental: emulation-verified, not yet hardware-tested.
+- Hardware-test the Korg NTS-1 preset: Macros 1, 2, 5 and 6 send CC 54, 55, 43 and 44. Other maps are emulation-verified.
 
 ## 0.5.0 — 2026-07-31
 

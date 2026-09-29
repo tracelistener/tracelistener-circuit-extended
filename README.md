@@ -45,7 +45,7 @@ Validated on hardware on 2026-07-31: normal boot, all four drum paths, Scale Fol
 
 The original Circuit's MIDI CC numbers are fixed. The uploader can change them: open **Optional — MIDI CC numbers**, pick a preset or type your own numbers for the synth macros and drum knobs, then upload as usual.
 
-**Status:** checked against the Circuit's own MIDI code in emulation. Not yet tested on hardware.
+**Status:** the Korg NTS-1 preset was tested on hardware on 2026-09-29: Macros 1, 2, 5 and 6 send CC 54, 55, 43 and 44. Other maps use the same table edit and are checked against the Circuit's own MIDI code in emulation.
 
 The page takes the verified firmware above and rewrites only the Circuit's CC tables, in your browser. Nothing else changes; the NTS-1 preset differs from the verified image by 19 bytes. The page shows the new SHA-256 and offers the file as a download.
 
