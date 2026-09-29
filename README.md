@@ -41,6 +41,45 @@ SHA-256:
 
 Validated on hardware on 2026-07-31: normal boot, all four drum paths, Scale Follow, Sample Start, independent Distortion Type, Filter LFO, Shift automation playback without a knob nudge, blue-LED Clear resets for every new Shift-Macro control, and red-LED automation deletion.
 
+## MIDI CC remap (experimental)
+
+The original Circuit's MIDI CC numbers are fixed. The uploader can change them: open **Optional — MIDI CC numbers**, pick a preset or type your own numbers for the synth macros and drum knobs, then upload as usual.
+
+**Status:** checked against the Circuit's own MIDI code in emulation. Not yet tested on hardware.
+
+The page takes the verified firmware above and rewrites only the Circuit's CC tables, in your browser. Nothing else changes; the NTS-1 preset differs from the verified image by 19 bytes. The page shows the new SHA-256 and offers the file as a download.
+
+### Korg NTS-1 preset
+
+| Circuit knob | Stock | Preset | NTS-1 control |
+|---|---|---|---|
+| Synth Macro 1 | CC 80 | CC 54 | Oscillator shape |
+| Synth Macro 2 | CC 81 | CC 55 | Oscillator alt |
+| Synth Macro 5 | CC 84 | CC 43 | Filter cutoff |
+| Synth Macro 6 | CC 85 | CC 44 | Filter resonance |
+
+This follows the Circuit's own layout, where Macros 1–2 are oscillator knobs and 5–6 are filter knobs. Set the NTS-1 to the Synth 1 or Synth 2 MIDI channel, and turn on its MIDI RX ShortMessage setting.
+
+### Rules
+
+- The new number is used for MIDI out and MIDI in.
+- Both synths share one layout. Each still uses its own MIDI channel, which you set in Settings view (hold Shift while powering on).
+- If another Circuit parameter on that channel already uses the number, the two swap. The NTS-1 preset moves the synth's ring mod level from CC 54 to CC 80.
+- Use 1–119, except 6, 32, 38 and 98–101. Those carry NRPN, RPN and bank select messages.
+- The knobs still control the Circuit's own sound as well.
+- To undo, upload again with stock numbers.
+
+### Command line
+
+The same patch is available as a Python builder with a Thumb-emulated verifier. The browser and Python builders are pinned to the same reference hash for the NTS-1 preset.
+
+```bash
+python cc-remap/build_circuit_cc_remap.py --preset nts1
+python cc-remap/verify_circuit_cc_remap.py build/cc-remap/nts1/manifest.json
+```
+
+`--list` prints every control and its current number. `--map synth.macro1=74` sets your own; drum controls are named like `drum1.pitch` or `drum2.filter`.
+
 ## Compatibility and recovery
 
 - Original Novation Circuit only.
@@ -52,7 +91,7 @@ Custom firmware always carries risk. Keep reliable power and do not disconnect t
 
 ## Source and legal
 
-Patch and verification sources are in [`tools/`](tools/) and [`experimental/`](experimental/). Builders retain the exact stock SHA-256 guard and fixed-size image checks.
+Patch and verification sources are in [`tools/`](tools/), [`experimental/`](experimental/), and [`cc-remap/`](cc-remap/). Builders retain the exact stock SHA-256 guard and fixed-size image checks.
 
 The MIT license applies to this project's original code and documentation. Novation and Circuit are trademarks of their respective owner. This independent project is not affiliated with or endorsed by Novation.
 
