@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add an untested **detents** build: performance v2 with Shift + Macro 5/6 Distortion Type moving one type per three encoder steps, like the Filter LFO. The uploader offers it as a third choice; performance v2 stays the default.
+- Fix, in the detents build, Shift automation recording the previous Distortion Type on the step where the type changes (found in emulation).
+- Document two selector limits on every build: Shift-turning registers nothing toward an end stop of the normal amount, and the first Filter LFO step can take one to three encoder steps.
+- Add the selector builder, patch and Thumb-emulated verifier in `performance/`, and the detents base to both CC-remap builders with its own NTS-1 reference hash.
+
 - Default the browser uploader and CC-remap CLI to the exact performance-v2 build tested on 2026-10-09; retain v0.5.0 as an uploader rollback choice.
 - Add pitch-bend, mod-wheel and channel-aftertouch receive on the synth note channels. Write the DSP smoother’s X-memory targets to fix v1’s decaying bend and zipper noise.
 - Label performance v2 experimental: bend worked, one unexplained crash was followed by stable operation, and modulation was later reported inconsistent. Long-term stability remains unconfirmed.

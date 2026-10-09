@@ -103,6 +103,7 @@
     <label for="firmwareChoice">Choose a build</label>
     <select id="firmwareChoice">
       <option value="perf-v2">Performance v2 — pitch bend, mod wheel and aftertouch (experimental)</option>
+      <option value="perf-v2-detents">Performance v2 + even Distortion Type steps (untested)</option>
       <option value="v050">Extended v0.5.0 — previous hardware-tested build</option>
     </select>
     <p class="note" id="firmwareStatus"></p>
@@ -148,7 +149,7 @@
   </div>
 </main>
 
-<script src="cc-remap.js?v=perf-v2"></script>
+<script src="cc-remap.js?v=perf-v2-detents"></script>
 <script>
 (() => {
   "use strict";
@@ -168,6 +169,14 @@
       references: cc && cc.PERF_V2_REFERENCE_BUILDS,
       status: "Pitch bend worked in a hardware test on 2026-10-09. One unexplained crash was reported, followed by stable operation; modulation was later reported inconsistent. Long-term stability is unconfirmed. Choose v0.5.0 above to roll back.",
     },
+    "perf-v2-detents": {
+      label: "Performance v2 with even Distortion Type steps (untested)",
+      file: "circuit-3592-extended-v0.5.0-perf-v2-detents.syx",
+      hash: "005514b86425391cf8944fb2878f35f8fd3ff37a84292de9bfb86274e0344aaf",
+      imageHash: "ee276e53b8b51ef72df4f14636e1494b1b24963dd1dd02e3bfb6fff14b332496",
+      references: cc && cc.DETENTS_REFERENCE_BUILDS,
+      status: "Performance v2 plus one change: Shift + Macro 5/6 moves one Distortion Type per three encoder steps, like the Filter LFO, and Shift automation records the type you hear. Verified in emulation only; not yet tested on hardware. Choose Performance v2 or v0.5.0 above to roll back.",
+    },
     v050: {
       label: "Extended v0.5.0",
       file: "circuit-3592-filter-lfo-shift-automation.syx",
@@ -178,15 +187,16 @@
     },
   };
   const requestedBuild = new URLSearchParams(window.location.search).get("firmware");
-  const buildKey = requestedBuild === "v050" ? "v050" : "perf-v2";
+  const buildKey = Object.hasOwn(builds, requestedBuild) ? requestedBuild : "perf-v2";
+  const perfBuild = buildKey !== "v050";
   const firmware = builds[buildKey];
   const firmwareUrl = "firmware/" + firmware.file;
   const firmwareHash = firmware.hash;
   const messageCount = 5981;
   $("firmwareChoice").value = buildKey;
   $("firmwareStatus").textContent = firmware.status;
-  $("firmwareStatus").className = buildKey === "perf-v2" ? "note warn" : "note";
-  $("performanceHelp").hidden = buildKey !== "perf-v2";
+  $("firmwareStatus").className = perfBuild ? "note warn" : "note";
+  $("performanceHelp").hidden = !perfBuild;
   $("firmwareDownload").href = firmwareUrl;
   $("uploadWhat").textContent = "Installs " + firmware.label + ".";
   $("firmwareChoice").onchange = () => {
@@ -370,7 +380,7 @@
       const text = control.input.value.trim();
       const value = Number(text);
       const reason = text === "" ? "enter 1–119"
-        : (buildKey === "perf-v2" && control.part === "synth" && value === 1)
+        : (perfBuild && control.part === "synth" && value === 1)
           ? "CC 1 is reserved for mod wheel" : cc.reservedReason(value);
       control.input.classList.toggle("invalid", !!reason);
       control.input.classList.toggle("changed", !reason && value !== control.stock);

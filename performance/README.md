@@ -53,6 +53,30 @@ Feature SysEx SHA-256:
 
 Verification covers 202,000 dispatcher cases per variant, 33,280 exhaustive controller-target cases, the pinned DSP smoothing instructions, and a 24,000-message stream through the real ARM setter with modeled SPI completion. These tests do not emulate full audio, IRQ/DMA timing or long-term hardware behaviour.
 
+## Detented Distortion Type (untested)
+
+`build_circuit_selector_detents.py` adds one change to performance v2 for Shift + Macro 5/6. The published SysEx is `docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-detents.syx`. It has not been tested on hardware.
+
+- **Fewer skipped types.** v0.5.0 and performance v2 advance Distortion Type on every encoder step, so a small turn skips several of the seven types. The wrapper now uses the Filter LFO's three-step divider at `0x08036A0C`. The type still wraps: direction comes from the stock Distortion Amount proposal, which the stock code clamps at 0 and 127. With the amount at 0, only clockwise turns register, and without the wrap, lower types would be unreachable.
+- **Recorded automation matches what plays.** Hardware testing showed that the recorder sees a Shift + Filter encoder event before the wrapper, so the Filter lane predicts the new mode. The Distortion lane goes through the same recorder hook but recorded the current, pre-step type. It now predicts the wrapper's result with the same selector routine. This defect is shown in emulation, not on hardware.
+
+The patch rewrites only the Distortion wrapper slot `0x08025CD4..0x08025D5C` and the recorder `0x08035976..0x080359F8`. Both slots already held this project's code, and the recorder's `record_tag` stays at `0x080359E8`. 176 image bytes differ from performance v2.
+
+```sh
+python performance/build_circuit_selector_detents.py
+python performance/verify_circuit_selector_detents.py build/circuit-selector-detents/circuit-3592-extended-v0.5.0-perf-v2-detents.syx
+```
+
+Feature SysEx SHA-256:
+
+```text
+005514b86425391cf8944fb2878f35f8fd3ff37a84292de9bfb86274e0344aaf
+```
+
+The verifier confirms that only the two slots changed, that nothing else loads the retired literal at `0x08025D58`, and that the Filter LFO code is unchanged. It runs the live wrapper from each drum's entry stub against a reference model for 20,421 Shift events, using the real parameter-restore helper. It checks the recorder's Distortion tag against the wrapper in 588 cases, and 696 other recorder inputs against performance v2. Against the shipped build, both the model and the recorder checks fail, which confirms the two defects. Stock services and the DSP are mocked.
+
+Not addressed: the end-stop limit and the shared, unreset step counter described in the main README. The same callback runs when any of the drum's parameters are refreshed, so guessing a direction at an end stop could step the selector without a knob turn.
+
 ## Implementation
 
 The hook at ARM `0x08020508` branches to a 92-byte handler in the unused newlib startup area at `0x080081E4`. It calls the stock DSP setter and resumes the original dispatcher. Only 91 bytes differ from v0.5.0.
