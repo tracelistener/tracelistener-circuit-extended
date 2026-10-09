@@ -41,6 +41,9 @@ from circuit_cc_remap_patch import (
     SELECTORS_IMAGE_SHA256,
     SELECTORS_SYSEX_SHA256,
     SELECTORS_REFERENCE_BUILDS,
+    LFO_RATES_IMAGE_SHA256,
+    LFO_RATES_SYSEX_SHA256,
+    LFO_RATES_REFERENCE_BUILDS,
     PARTS,
     PRESETS,
     REFERENCE_BUILDS,
@@ -69,6 +72,7 @@ BASES = {
     PERF_V2_SYSEX_SHA256: ("extended-v0.5.0-perf-v2", PERF_V2_IMAGE_SHA256),
     DETENTS_SYSEX_SHA256: ("extended-v0.5.0-perf-v2-detents", DETENTS_IMAGE_SHA256),
     SELECTORS_SYSEX_SHA256: ("extended-v0.5.0-perf-v2-selectors", SELECTORS_IMAGE_SHA256),
+    LFO_RATES_SYSEX_SHA256: ("extended-v0.5.0-perf-v2-lfo-rates", LFO_RATES_IMAGE_SHA256),
     EXTENDED_V050_SYSEX_SHA256: ("extended-v0.5.0", EXTENDED_V050_IMAGE_SHA256),
     STOCK_SYSEX_SHA256: ("stock", STOCK_IMAGE_SHA256),
 }
@@ -144,7 +148,8 @@ def main() -> None:
     references = {"extended-v0.5.0": REFERENCE_BUILDS,
                   "extended-v0.5.0-perf-v2": PERF_V2_REFERENCE_BUILDS,
                   "extended-v0.5.0-perf-v2-detents": DETENTS_REFERENCE_BUILDS,
-                  "extended-v0.5.0-perf-v2-selectors": SELECTORS_REFERENCE_BUILDS}.get(base_name, {})
+                  "extended-v0.5.0-perf-v2-selectors": SELECTORS_REFERENCE_BUILDS,
+                  "extended-v0.5.0-perf-v2-lfo-rates": LFO_RATES_REFERENCE_BUILDS}.get(base_name, {})
     reference = references.get(args.preset) if not args.map else None
     if reference and sha256(sysex) != reference:
         raise SystemExit(f"preset {args.preset} does not match its reference build {reference}")
