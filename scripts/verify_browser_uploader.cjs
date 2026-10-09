@@ -75,14 +75,23 @@ async function page(key, corrupt = false) {
   }
   await until(() => get("sCC").attributes["aria-disabled"] === "false");
   const perf = key !== "v050";
-  assert.equal(get("firmwareChoice").value, perf ? "perf-v2" : "v050");
-  const file = perf ? "circuit-3592-extended-v0.5.0-perf-v2-feature.syx" : "circuit-3592-filter-lfo-shift-automation.syx";
+  const selected = key || "perf-v2";
+  const expected = {
+    "perf-v2": { file: "circuit-3592-extended-v0.5.0-perf-v2-feature.syx", hash: cc.PERF_V2_SYSEX_SHA256,
+      references: cc.PERF_V2_REFERENCE_BUILDS, status: /unexplained crash/ },
+    "perf-v2-detents": { file: "circuit-3592-extended-v0.5.0-perf-v2-detents.syx", hash: cc.DETENTS_SYSEX_SHA256,
+      references: cc.DETENTS_REFERENCE_BUILDS, status: /not yet tested on hardware/ },
+    v050: { file: "circuit-3592-filter-lfo-shift-automation.syx", hash: cc.EXTENDED_V050_SYSEX_SHA256,
+      references: cc.REFERENCE_BUILDS, status: /Previous build/ },
+  }[selected];
+  assert.equal(get("firmwareChoice").value, selected);
+  const file = expected.file;
   assert.equal(get("firmwareDownload").href, "firmware/" + file);
   const base = new Uint8Array(fs.readFileSync(path.join(docs, "firmware", file)));
-  const baseHash = perf ? cc.PERF_V2_SYSEX_SHA256 : cc.EXTENDED_V050_SYSEX_SHA256;
+  const baseHash = expected.hash;
   assert.equal(await cc.sha256Hex(base), baseHash);
   assert(get("fileHash").textContent.includes(baseHash));
-  assert.match(get("firmwareStatus").textContent, perf ? /unexplained crash/ : /Previous build/);
+  assert.match(get("firmwareStatus").textContent, expected.status);
 
   // A controller mapped to CC1 must not accidentally also drive the mod source.
   const image = cc.decodeFirmware(base).image;
@@ -104,7 +113,7 @@ async function page(key, corrupt = false) {
 
   get("ccPreset").value = "nts1";
   get("ccPreset").onchange();
-  const expectedHash = (perf ? cc.PERF_V2_REFERENCE_BUILDS : cc.REFERENCE_BUILDS).nts1;
+  const expectedHash = expected.references.nts1;
   await until(() => get("ccResult").textContent.includes(expectedHash));
   const custom = cc.buildRemappedSysex(base, cc.PRESETS.nts1.map);
   assert.equal(await cc.sha256Hex(custom.sysex), expectedHash);
@@ -130,6 +139,7 @@ async function page(key, corrupt = false) {
 (async () => {
   await page(null);
   await page("v050");
+  await page("perf-v2-detents");
   await page(null, true);
-  console.log("PASS: default and rollback selection; exact base and NTS-1 bytes; CC1 guard; reset; upload locking; corrupt firmware refused (mock MIDI).");
+  console.log("PASS: default, detents and rollback selection; exact base and NTS-1 bytes; CC1 guard; reset; upload locking; corrupt firmware refused (mock MIDI).");
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -44,6 +44,9 @@ from circuit_cc_remap_patch import (
     PERF_V2_IMAGE_SHA256,
     PERF_V2_SYSEX_SHA256,
     PERF_V2_REFERENCE_BUILDS,
+    DETENTS_IMAGE_SHA256,
+    DETENTS_SYSEX_SHA256,
+    DETENTS_REFERENCE_BUILDS,
     has_performance_controls,
     MIDI_MESSAGE_SEND,
     PARTS,
@@ -253,6 +256,8 @@ def reference_tests() -> int:
         (UPLOADER_BASE, EXTENDED_V050_SYSEX_SHA256, EXTENDED_V050_IMAGE_SHA256, REFERENCE_BUILDS),
         (UPLOADER_BASE.with_name("circuit-3592-extended-v0.5.0-perf-v2-feature.syx"),
          PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, PERF_V2_REFERENCE_BUILDS),
+        (UPLOADER_BASE.with_name("circuit-3592-extended-v0.5.0-perf-v2-detents.syx"),
+         DETENTS_SYSEX_SHA256, DETENTS_IMAGE_SHA256, DETENTS_REFERENCE_BUILDS),
     )
     checks = 0
     for path, sysex_hash, image_hash, references in bases:
@@ -279,7 +284,8 @@ def browser_module_tests() -> int:
     """Crude drift guard: the browser port must declare the same constants."""
     source = BROWSER_MODULE.read_text(encoding="utf-8").lower()
     needles = [EXTENDED_V050_SYSEX_SHA256, EXTENDED_V050_IMAGE_SHA256, *REFERENCE_BUILDS.values(),
-               PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, *PERF_V2_REFERENCE_BUILDS.values()]
+               PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, *PERF_V2_REFERENCE_BUILDS.values(),
+               DETENTS_SYSEX_SHA256, DETENTS_IMAGE_SHA256, *DETENTS_REFERENCE_BUILDS.values()]
     for part in PARTS.values():
         needles += [f"{part.forward:#010x}", f"{part.reverse:#010x}", f"{part.rx_literal:#010x}"]
     missing = [needle for needle in needles if needle.lower() not in source]
