@@ -103,7 +103,7 @@
     <label for="firmwareChoice">Choose a build</label>
     <select id="firmwareChoice">
       <option value="perf-v2">Performance v2 — pitch bend, mod wheel and aftertouch (experimental)</option>
-      <option value="perf-v2-detents">Performance v2 + even Distortion Type steps (untested)</option>
+      <option value="perf-v2-selectors">Performance v2 + improved Shift selectors (experimental)</option>
       <option value="v050">Extended v0.5.0 — previous hardware-tested build</option>
     </select>
     <p class="note" id="firmwareStatus"></p>
@@ -149,7 +149,7 @@
   </div>
 </main>
 
-<script src="cc-remap.js?v=perf-v2-detents"></script>
+<script src="cc-remap.js?v=perf-v2-selectors"></script>
 <script>
 (() => {
   "use strict";
@@ -169,13 +169,13 @@
       references: cc && cc.PERF_V2_REFERENCE_BUILDS,
       status: "Pitch bend worked in a hardware test on 2026-10-09. One unexplained crash was reported, followed by stable operation; modulation was later reported inconsistent. Long-term stability is unconfirmed. Choose v0.5.0 above to roll back.",
     },
-    "perf-v2-detents": {
-      label: "Performance v2 with even Distortion Type steps (untested)",
-      file: "circuit-3592-extended-v0.5.0-perf-v2-detents.syx",
-      hash: "005514b86425391cf8944fb2878f35f8fd3ff37a84292de9bfb86274e0344aaf",
-      imageHash: "ee276e53b8b51ef72df4f14636e1494b1b24963dd1dd02e3bfb6fff14b332496",
-      references: cc && cc.DETENTS_REFERENCE_BUILDS,
-      status: "Performance v2 plus one change: Shift + Macro 5/6 moves one Distortion Type per three encoder steps, like the Filter LFO, and Shift automation records the type you hear. Verified in emulation only; not yet tested on hardware. Choose Performance v2 or v0.5.0 above to roll back.",
+    "perf-v2-selectors": {
+      label: "Performance v2 with improved Shift selectors",
+      file: "circuit-3592-extended-v0.5.0-perf-v2-selectors.syx",
+      hash: "54aa4e9ac25f87d16d796be6740fbbb35ee55bf496c31f2fb0db3be5c4551480",
+      imageHash: "90cc398f9d1034fa58a41fed316665301aeb212e8a18c411aa7f02a4e8be3311",
+      references: cc && cc.SELECTORS_REFERENCE_BUILDS,
+      status: "Performance v2 plus: Shift + Macro 5/6 moves one Distortion Type per three encoder steps (tested on hardware 2026-10-09). Shift + Macro 7/8 Filter LFO now wraps between Off and the fastest speed, and turning Filter no longer switches the LFO Off; Clear no longer resets the LFO. The Filter LFO changes are verified in emulation only. Choose Performance v2 or v0.5.0 above to roll back.",
     },
     v050: {
       label: "Extended v0.5.0",
@@ -187,7 +187,9 @@
     },
   };
   const requestedBuild = new URLSearchParams(window.location.search).get("firmware");
-  const buildKey = Object.hasOwn(builds, requestedBuild) ? requestedBuild : "perf-v2";
+  // Links to the superseded detents build open its successor.
+  const requested = requestedBuild === "perf-v2-detents" ? "perf-v2-selectors" : requestedBuild;
+  const buildKey = Object.hasOwn(builds, requested) ? requested : "perf-v2";
   const perfBuild = buildKey !== "v050";
   const firmware = builds[buildKey];
   const firmwareUrl = "firmware/" + firmware.file;

@@ -47,6 +47,9 @@ from circuit_cc_remap_patch import (
     DETENTS_IMAGE_SHA256,
     DETENTS_SYSEX_SHA256,
     DETENTS_REFERENCE_BUILDS,
+    SELECTORS_IMAGE_SHA256,
+    SELECTORS_SYSEX_SHA256,
+    SELECTORS_REFERENCE_BUILDS,
     has_performance_controls,
     MIDI_MESSAGE_SEND,
     PARTS,
@@ -258,6 +261,8 @@ def reference_tests() -> int:
          PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, PERF_V2_REFERENCE_BUILDS),
         (UPLOADER_BASE.with_name("circuit-3592-extended-v0.5.0-perf-v2-detents.syx"),
          DETENTS_SYSEX_SHA256, DETENTS_IMAGE_SHA256, DETENTS_REFERENCE_BUILDS),
+        (UPLOADER_BASE.with_name("circuit-3592-extended-v0.5.0-perf-v2-selectors.syx"),
+         SELECTORS_SYSEX_SHA256, SELECTORS_IMAGE_SHA256, SELECTORS_REFERENCE_BUILDS),
     )
     checks = 0
     for path, sysex_hash, image_hash, references in bases:
@@ -285,7 +290,8 @@ def browser_module_tests() -> int:
     source = BROWSER_MODULE.read_text(encoding="utf-8").lower()
     needles = [EXTENDED_V050_SYSEX_SHA256, EXTENDED_V050_IMAGE_SHA256, *REFERENCE_BUILDS.values(),
                PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, *PERF_V2_REFERENCE_BUILDS.values(),
-               DETENTS_SYSEX_SHA256, DETENTS_IMAGE_SHA256, *DETENTS_REFERENCE_BUILDS.values()]
+               DETENTS_SYSEX_SHA256, DETENTS_IMAGE_SHA256, *DETENTS_REFERENCE_BUILDS.values(),
+               SELECTORS_SYSEX_SHA256, SELECTORS_IMAGE_SHA256, *SELECTORS_REFERENCE_BUILDS.values()]
     for part in PARTS.values():
         needles += [f"{part.forward:#010x}", f"{part.reverse:#010x}", f"{part.rx_literal:#010x}"]
     missing = [needle for needle in needles if needle.lower() not in source]

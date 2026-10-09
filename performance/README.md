@@ -53,9 +53,39 @@ Feature SysEx SHA-256:
 
 Verification covers 202,000 dispatcher cases per variant, 33,280 exhaustive controller-target cases, the pinned DSP smoothing instructions, and a 24,000-message stream through the real ARM setter with modeled SPI completion. These tests do not emulate full audio, IRQ/DMA timing or long-term hardware behaviour.
 
-## Detented Distortion Type (untested)
+## Shift selector fixes
 
-`build_circuit_selector_detents.py` adds one change to performance v2 for Shift + Macro 5/6. The published SysEx is `docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-detents.syx`. It has not been tested on hardware.
+`build_circuit_selectors.py` applies two layers to performance v2 and publishes `docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-selectors.syx`. The intermediate image after the first layer is the published detents build (`…-perf-v2-detents.syx`); the uploader now offers only the combined build.
+
+```sh
+python performance/build_circuit_selectors.py
+python performance/verify_circuit_lfo_wrap.py build/circuit-selectors/circuit-3592-extended-v0.5.0-perf-v2-selectors.syx
+```
+
+Feature SysEx SHA-256:
+
+```text
+54aa4e9ac25f87d16d796be6740fbbb35ee55bf496c31f2fb0db3be5c4551480
+```
+
+334 image bytes differ from performance v2.
+
+### Filter LFO wrap and centre fix
+
+Hardware feedback on 2026-10-09: the Filter LFO selector stopped at both ends and sometimes would not move. With the LFO on, turning Filter down switched the LFO Off, and it stayed off when Filter was turned back up.
+
+- **Wrap.** Clockwise from mode 19 goes to Off; counter-clockwise from Off goes to mode 19 with its centre seeded from the Filter amount, as leaving Off clockwise already did. The rates only increase from mode 12 to 19 because the DSP uses the mode as the rate shift.
+- **No reset on the Filter centre.** The normal Filter path set the mode to Off when the Filter value was exactly 64 and `STOCK_BUTTON_PRESSED(0x19)` read zero, on the assumption that 0x19 is an active-low Clear line. In stock code, 0x19 is queried only by the power-on button-combination check at `0x0800A304`, and the hardware result shows it can read zero with Clear released. The check is removed, so Filter movement never changes the LFO mode. This also removes the Clear + Macro 7/8 reset of the LFO.
+
+`circuit_lfo_wrap_patch.py` first reassembles the shipped wrapper and refuses any base where it differs. It rewrites the Filter wrapper `0x08035B4C..0x08035BF8` (the unused tail is erased to 0xFF) and Filter record predictor B `0x08036B08..0x08036B28`.
+
+`verify_circuit_lfo_wrap.py` runs the live wrapper from each drum's entry stub against a reference model for 24,000 Shift events, including 611 wraps. It checks 600 Shift-released events against the detents build and confirms the patch never queries 0x19. It replays the reported fault, a Filter sweep from 90 to 0 with 0x19 reading zero: the detents build turns the LFO Off, the patch keeps it. It also checks the recorder's Filter tag against the wrapper in 924 cases, and 580 other recorder inputs against the base.
+
+Hardware status: the Distortion Type stepping below was tested on 2026-10-09. The Filter LFO changes and the recorder prediction are verified in emulation only.
+
+### Detented Distortion Type
+
+`build_circuit_selector_detents.py` builds the first layer for Shift + Macro 5/6 and publishes `docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-detents.syx`. Hardware test on 2026-10-09: the stepping "works great". Recording has not been tested yet.
 
 - **Fewer skipped types.** v0.5.0 and performance v2 advance Distortion Type on every encoder step, so a small turn skips several of the seven types. The wrapper now uses the Filter LFO's three-step divider at `0x08036A0C`. The type still wraps: direction comes from the stock Distortion Amount proposal, which the stock code clamps at 0 and 127. With the amount at 0, only clockwise turns register, and without the wrap, lower types would be unreachable.
 - **Recorded automation matches what plays.** Hardware testing showed that the recorder sees a Shift + Filter encoder event before the wrapper, so the Filter lane predicts the new mode. The Distortion lane goes through the same recorder hook but recorded the current, pre-step type. It now predicts the wrapper's result with the same selector routine. This defect is shown in emulation, not on hardware.
@@ -75,7 +105,7 @@ Feature SysEx SHA-256:
 
 The verifier confirms that only the two slots changed, that nothing else loads the retired literal at `0x08025D58`, and that the Filter LFO code is unchanged. It runs the live wrapper from each drum's entry stub against a reference model for 20,421 Shift events, using the real parameter-restore helper. It checks the recorder's Distortion tag against the wrapper in 588 cases, and 696 other recorder inputs against performance v2. Against the shipped build, both the model and the recorder checks fail, which confirms the two defects. Stock services and the DSP are mocked.
 
-Not addressed: the end-stop limit and the shared, unreset step counter described in the main README. The same callback runs when any of the drum's parameters are refreshed, so guessing a direction at an end stop could step the selector without a knob turn.
+Not addressed by either layer: the end-stop limit (the wrap keeps every choice reachable, but turning toward the end stop still registers nothing) and the shared, unreset step counter described in the main README. The same callback runs when any of the drum's parameters are refreshed, so guessing a direction at an end stop could step the selector without a knob turn.
 
 ## Implementation
 

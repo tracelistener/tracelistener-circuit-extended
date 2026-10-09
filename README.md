@@ -23,10 +23,10 @@ Use Chrome or Edge. The page loads and verifies the firmware automatically—no 
 | Drum Pitch | Follows the selected master root and scale across ±2 octaves; sample reference note is C. |
 | Shift + Scales | Toggle Scale Follow. It starts enabled after boot. |
 | Shift + Macro 3/4 | Move Sample Start for the first/second drum in the active pair. |
-| Shift + Macro 5/6 | Select one of seven stock distortion algorithms for the first/second drum. Steps on every encoder step and wraps from the last type to the first; the untested detents build below moves one type per three steps. |
-| Shift + Macro 7/8 | Select Filter LFO Off or eight speeds: four triangle and four sawtooth. Moves one choice per three encoder steps and stops at Off and the fastest sawtooth. |
+| Shift + Macro 5/6 | Select one of seven stock distortion algorithms for the first/second drum. Steps on every encoder step and wraps from the last type to the first; the selectors build below moves one type per three steps. |
+| Shift + Macro 7/8 | Select Filter LFO Off or eight speeds, slow to fast: four triangle, then four sawtooth. Moves one choice per three encoder steps and stops at Off and the fastest sawtooth; the selectors build below wraps instead. |
 | Record + Shift Macro | Record and replay Sample Start, Distortion Type, and Filter LFO movements. |
-| Clear + Macro 3–8 clockwise | Perform the stock blue-LED reset and reset the corresponding new Shift-Macro control: Sample Start, Distortion Type, or Filter LFO. |
+| Clear + Macro 3–8 clockwise | Perform the stock blue-LED reset and reset the corresponding new Shift-Macro control: Sample Start, Distortion Type, or Filter LFO. The selectors build no longer resets the Filter LFO. |
 | Clear + Macro counter-clockwise | Keep the stock red-LED automation-delete behavior. |
 
 Normal Macro movement retains the Circuit's stock Decay, Distortion Amount, and bipolar Filter controls.
@@ -36,21 +36,25 @@ Normal Macro movement retains the Circuit's stock Decay, Distortion Amount, and 
 The macros are endless encoders, so a selector counts encoder steps. Two limits apply on every build:
 
 - **Move the normal knob off its end stop first.** The hidden selection takes its direction from the normal Distortion Amount or Filter value. When that value is fully clockwise or fully counter-clockwise, turning further that way registers nothing. Release Shift, turn the knob back slightly, then Shift-turn again. For example, Filter fully counter-clockwise prevents stepping down to Filter LFO Off.
-- **The first Filter LFO step can take one to three encoder steps.** The three-step counter is not reset when you let go. In the detents build, Distortion Type shares the same counter for each drum.
+- **The first Filter LFO step can take one to three encoder steps.** The three-step counter is not reset when you let go. In the selectors build, Distortion Type shares the same counter for each drum.
 
-### Detents build (untested)
+**Known fault on v0.5.0 and Performance v2:** with the Filter LFO on, turning Filter down through its centre can switch the LFO Off for good, until you select it again with Shift + Macro 7/8. The selectors build fixes this.
 
-[Download Performance v2 + even Distortion Type steps](docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-detents.syx), or choose it in the uploader. It changes only Shift + Macro 5/6:
+### Selectors build (experimental)
 
-- Distortion Type moves one type per three encoder steps, like the Filter LFO, instead of skipping several types per turn. It still wraps, so every type stays reachable when Distortion Amount is at zero.
-- Shift automation records the type you hear. In emulation, earlier builds record the previous type on the step where the type changes. This assumes the recorder runs before the selector, as hardware testing showed for the Filter lane.
+[Download Performance v2 + improved Shift selectors](docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-selectors.syx), or choose it in the uploader. It changes only the Shift selectors:
 
-Emulation checks pass; the build has not been tested on hardware. [Details and verification](performance/README.md#detented-distortion-type-untested).
+- **Distortion Type** moves one type per three encoder steps, like the Filter LFO, instead of skipping several types per turn. It still wraps, so every type stays reachable when Distortion Amount is at zero. Tested on hardware on 2026-10-09.
+- **Shift automation** records the Distortion Type you hear. In emulation, earlier builds record the previous type on the step where the type changes. Not yet tested on hardware.
+- **Filter LFO** wraps: clockwise past the fastest sawtooth goes to Off, counter-clockwise past Off goes to the fastest sawtooth. Every choice stays reachable even with Filter at an end stop. Not yet tested on hardware.
+- **Turning Filter never switches the LFO Off.** As a result, Clear + Macro 7/8 no longer resets the LFO; select Off with Shift + Macro 7/8 instead. Not yet tested on hardware.
+
+[Details and verification](performance/README.md#shift-selector-fixes).
 
 SHA-256:
 
 ```text
-005514b86425391cf8944fb2878f35f8fd3ff37a84292de9bfb86274e0344aaf
+54aa4e9ac25f87d16d796be6740fbbb35ee55bf496c31f2fb0db3be5c4551480
 ```
 
 ## Performance v2 — experimental

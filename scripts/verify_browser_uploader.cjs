@@ -75,12 +75,12 @@ async function page(key, corrupt = false) {
   }
   await until(() => get("sCC").attributes["aria-disabled"] === "false");
   const perf = key !== "v050";
-  const selected = key || "perf-v2";
+  const selected = key === "perf-v2-detents" ? "perf-v2-selectors" : key || "perf-v2";
   const expected = {
     "perf-v2": { file: "circuit-3592-extended-v0.5.0-perf-v2-feature.syx", hash: cc.PERF_V2_SYSEX_SHA256,
       references: cc.PERF_V2_REFERENCE_BUILDS, status: /unexplained crash/ },
-    "perf-v2-detents": { file: "circuit-3592-extended-v0.5.0-perf-v2-detents.syx", hash: cc.DETENTS_SYSEX_SHA256,
-      references: cc.DETENTS_REFERENCE_BUILDS, status: /not yet tested on hardware/ },
+    "perf-v2-selectors": { file: "circuit-3592-extended-v0.5.0-perf-v2-selectors.syx", hash: cc.SELECTORS_SYSEX_SHA256,
+      references: cc.SELECTORS_REFERENCE_BUILDS, status: /emulation only/ },
     v050: { file: "circuit-3592-filter-lfo-shift-automation.syx", hash: cc.EXTENDED_V050_SYSEX_SHA256,
       references: cc.REFERENCE_BUILDS, status: /Previous build/ },
   }[selected];
@@ -139,7 +139,8 @@ async function page(key, corrupt = false) {
 (async () => {
   await page(null);
   await page("v050");
+  await page("perf-v2-selectors");
   await page("perf-v2-detents");
   await page(null, true);
-  console.log("PASS: default, detents and rollback selection; exact base and NTS-1 bytes; CC1 guard; reset; upload locking; corrupt firmware refused (mock MIDI).");
+  console.log("PASS: default, selectors (and old detents link) and rollback selection; exact base and NTS-1 bytes; CC1 guard; reset; upload locking; corrupt firmware refused (mock MIDI).");
 })().catch(error => { console.error(error); process.exitCode = 1; });
