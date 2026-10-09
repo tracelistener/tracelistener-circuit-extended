@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Replace the detents uploader choice with a **selectors** build. It keeps the Distortion Type change and adds Filter LFO fixes. Old `?firmware=perf-v2-detents` links open it.
+- Record a hardware test of the detented Distortion Type selector on 2026-10-09: the stepping works well.
+- Make Shift + Macro 7/8 Filter LFO wrap between Off and the fastest sawtooth instead of stopping at both ends (selectors build).
+- Fix the Filter LFO switching Off when Filter is turned through its centre (found on hardware; selectors build). The check read button ID 0x19, which is not a reliable Clear line. As a result, Clear + Macro 7/8 no longer resets the LFO in the selectors build.
+- Correct the Filter LFO description: the eight speeds run slow to fast, triangle then sawtooth.
+
 - Add an untested **detents** build: performance v2 with Shift + Macro 5/6 Distortion Type moving one type per three encoder steps, like the Filter LFO. The uploader offers it as a third choice; performance v2 stays the default.
 - Fix, in the detents build, Shift automation recording the previous Distortion Type on the step where the type changes (found in emulation).
 - Document two selector limits on every build: Shift-turning registers nothing toward an end stop of the normal amount, and the first Filter LFO step can take one to three encoder steps.

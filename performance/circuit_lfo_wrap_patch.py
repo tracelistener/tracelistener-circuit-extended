@@ -1,4 +1,4 @@
-"""Wrap-around Shift + Macro 7/8 Filter LFO selection.
+"""Wrap-around Shift + Macro 7/8 Filter LFO selection, no Filter-centre reset.
 
 Hardware feedback (2026-10-09): the detented Distortion Type selector, which
 wraps, "works great", while the Filter LFO selector stops at both ends and
@@ -21,6 +21,15 @@ Changes, both inside slots that already hold this project's code:
 
 Leaving Off still seeds the centre from the Filter amount through the
 cubic map at 0x0803595C; entering Off still clears the packed word.
+
+The patch also removes the Clear reset from the normal Filter path.  It
+switched the LFO Off whenever the Filter value was exactly 64 and
+STOCK_BUTTON_PRESSED(0x19) read zero.  0x19 belongs to the stock power-on
+button-combination check at 0x0800A304, not to a verified Clear line, and
+hardware (2026-10-09) showed the LFO switching Off and staying off after
+turning Filter down through its centre.  Filter movement now never changes
+the LFO mode; Shift + Macro 7/8 is the only way to select Off.  Removing
+the check shrinks the wrapper, so the rest of the slot is erased to 0xFF.
 """
 
 from __future__ import annotations
@@ -87,7 +96,8 @@ def assemble_thumb(source: str, address: int) -> bytes:
 
 def lfo_common_source(*, wrap: bool) -> str:
     # wrap=False reproduces the shipped wrapper byte for byte (checked by
-    # apply()); wrap=True changes only the two end transitions.
+    # apply()); wrap=True changes the two end transitions and drops the
+    # Filter-centre Clear reset.
     top = "bhs step_off" if wrap else "bhs restore_amount"
     if wrap:
         start = f"""
@@ -111,6 +121,13 @@ def lfo_common_source(*, wrap: bool) -> str:
         b store_state"""
         down_off = ""
         wrap_top = ""
+    clear_reset = "" if wrap else f"""cmp r7, #0x40
+        bne normal_clear_done
+        movs r0, #{CLEAR_LOGICAL_ID:#x}
+        bl {STOCK_BUTTON_PRESSED:#x}
+        cbnz r0, normal_clear_done
+        movs r5, #0
+    normal_clear_done:"""
     return f"""
         push {{r1, r2, r3, r4, r5, r6, r7, lr}}
         movs r6, #{LFO_MODE_REGISTER_STRIDE}
@@ -127,13 +144,7 @@ def lfo_common_source(*, wrap: bool) -> str:
         movs r0, #0x10
         bl {STOCK_DRUM_CONTROL_GETTER:#x}
         mov r7, r0
-        cmp r7, #0x40
-        bne normal_clear_done
-        movs r0, #{CLEAR_LOGICAL_ID:#x}
-        bl {STOCK_BUTTON_PRESSED:#x}
-        cbnz r0, normal_clear_done
-        movs r5, #0
-    normal_clear_done:
+        {clear_reset}
         and r1, r5, #0x3f
         cbz r1, normal_mode_valid
         cmp r1, #{LFO_MODE_MIN}
@@ -242,12 +253,14 @@ def apply(base_image: bytes) -> tuple[bytes, dict]:
         raise ValueError(f"predictor B needs {len(predict)} bytes; slot has {PREDICT_B_END - PREDICT_B}")
     predict += b"\x00\xbf" * ((PREDICT_B_END - PREDICT_B - len(predict)) // 2)
 
+    common += b"\xff" * (LFO_COMMON_END - LFO_COMMON - len(common))
     image = bytearray(base_image)
-    image[offset(LFO_COMMON) : offset(LFO_COMMON) + len(common)] = common
+    image[offset(LFO_COMMON) : offset(LFO_COMMON_END)] = common
     image[offset(PREDICT_B) : offset(PREDICT_B_END)] = predict
     manifest = {
-        "patch": "Shift + Macro 7/8 Filter LFO wraps between Off and the fastest sawtooth",
-        "lfo_wrapper": [f"{LFO_COMMON:#010x}", f"{LFO_COMMON + len(common):#010x}"],
+        "patch": "Filter LFO wraps between Off and the fastest sawtooth; Filter movement never turns it Off",
+        "lfo_wrapper": [f"{LFO_COMMON:#010x}", f"{LFO_COMMON_END:#010x}"],
+        "filter_centre_clear_reset": "removed",
         "predictor_b": [f"{PREDICT_B:#010x}", f"{PREDICT_B_END:#010x}"],
         "changed_image_bytes": sum(1 for a, b in zip(base_image, image) if a != b),
     }

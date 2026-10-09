@@ -10,8 +10,9 @@ SysEx.  Checks:
   model over long random Shift event streams: Off and modes 12..19 in a
   cycle, three moving events per step, centre seeded on leaving Off and
   cleared on entering it, stored Filter amount restored;
-* with Shift released (with and without Clear held) the wrapper behaves
-  exactly as the base image;
+* with Shift released the wrapper never queries button 0x19 and never
+  changes the LFO mode; otherwise it behaves exactly as the base image does
+  when 0x19 reads "not held";
 * the recorder's Filter tag equals the mode the wrapper produces for the same
   event and state, and every other recorder input matches the base.
 """
@@ -57,10 +58,12 @@ class Machine(harness.Machine):
     def __init__(self, image: bytes):
         super().__init__(image)
         self.clear = False
+        self.buttons: list[int] = []
 
     def _hook(self, uc, address, size, user):
         if address == patch.STOCK_BUTTON_PRESSED:
             button = uc.reg_read(UC_ARM_REG_R0) & 0xFF
+            self.buttons.append(button)
             if button == patch.SHIFT_LOGICAL_ID:
                 result = int(self.shift)
             elif button == patch.CLEAR_LOGICAL_ID:
@@ -131,6 +134,10 @@ def static_checks(base: bytes, patched: bytes) -> str:
     md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
     for address, end in regions:
         chunk = patched[patch.offset(address) : patch.offset(end)]
+        if address == patch.LFO_COMMON:
+            chunk = chunk.rstrip(b"\xff")  # erased slot tail
+            if len(chunk) % 2:
+                raise AssertionError("Filter wrapper code is not halfword aligned")
         if sum(i.size for i in md.disasm(chunk, address)) != len(chunk):
             raise AssertionError(f"{address:#x}: not every byte decodes as Thumb")
     changed = sum(1 for a, b in zip(base, patched) if a != b)
@@ -207,19 +214,39 @@ def shift_released_checks(base: bytes, patched: bytes) -> str:
                 patch.STEP_DIVIDER_STATE + drum: rng.randrange(3) << 8,
             }
             proposal = rng.choice((0x40, rng.randrange(128)))
-            clear = rng.random() < 0.3
             outcomes = []
-            for image in (base, patched):
+            for image, clear in ((base, False), (patched, False), (patched, True)):
                 m = Machine(image)
                 m.dsp.update(state)
                 m.proposal = proposal
                 m.clear = clear
                 result = m.lfo_event(drum)
+                if image is patched and patch.CLEAR_LOGICAL_ID in m.buttons:
+                    raise AssertionError("patched Filter path still queries button 0x19")
                 outcomes.append((result, sorted(m.dsp.items()), m.writes))
-            if outcomes[0] != outcomes[1]:
-                raise AssertionError(f"Shift released differs from base: drum {drum}, {state}, clear {clear}")
+            if not (outcomes[0] == outcomes[1] == outcomes[2]):
+                raise AssertionError(f"Shift released differs from base: drum {drum}, {state}")
+            before = mode_of(state[mode_reg])
+            after = mode_of(dict(outcomes[2][1]).get(mode_reg, 0))
+            if before != after:
+                raise AssertionError(f"Filter movement changed the LFO mode {before} -> {after}")
             cases += 1
-    return f"{cases} Shift-released cases (with and without Clear) identical to base"
+    # The reported fault: LFO on, Filter swept down through 64 with 0x19
+    # reading zero.  The base turns the LFO Off; the patch must not.
+    for drum in range(4):
+        mode_reg = patch.LFO_MODE_REGISTER_BASE + patch.LFO_MODE_REGISTER_STRIDE * drum
+        results = []
+        for image in (base, patched):
+            m = Machine(image)
+            m.clear = True
+            m.dsp[mode_reg] = centre_map(90, 14) << 8
+            for value in range(90, -1, -1):
+                m.proposal = value
+                m.lfo_event(drum)
+            results.append(mode_of(m.dsp[mode_reg]))
+        if results != [0, 14]:
+            raise AssertionError(f"Filter sweep through 64: base/patched modes {results}, expected [0, 14]")
+    return f"{cases} Shift-released cases identical to base; a Filter sweep through 64 keeps the LFO on (base turns it Off)"
 
 
 def recorder_checks(base: bytes, patched: bytes) -> str:
