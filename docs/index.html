@@ -71,7 +71,7 @@
 <body>
 <main>
   <h1>Circuit Extended Firmware</h1>
-  <p class="sub">Hardware-validated firmware uploader. Nothing to install.</p>
+  <p class="sub">Original Novation Circuit firmware uploader. Nothing to install.</p>
 
   <div class="step danger">
     <h2>Before you start</h2>
@@ -99,15 +99,22 @@
   </div>
 
   <div class="step" id="s3">
-    <h2>Verified firmware</h2>
+    <h2>Firmware</h2>
+    <label for="firmwareChoice">Choose a build</label>
+    <select id="firmwareChoice">
+      <option value="perf-v2">Performance v2 — pitch bend, mod wheel and aftertouch (experimental)</option>
+      <option value="v050">Extended v0.5.0 — previous hardware-tested build</option>
+    </select>
+    <p class="note" id="firmwareStatus"></p>
+    <p class="note" id="performanceHelp">Mod wheel and aftertouch need patch modulation assignments. For a direct filter sweep, set your controller’s mod strip to CC 74 on the synth’s MIDI channel. <a href="https://github.com/tracelistener/tracelistener-circuit-extended/tree/main/performance">Setup and test notes</a>.</p>
     <p class="note" id="fileInfo">Loading firmware…</p>
     <p class="note hash mono" id="fileHash"></p>
-    <p class="note"><a href="firmware/circuit-3592-filter-lfo-shift-automation.syx" download>Download a copy</a></p>
+    <p class="note"><a id="firmwareDownload" href="firmware/circuit-3592-extended-v0.5.0-perf-v2-feature.syx" download>Download a copy</a></p>
   </div>
 
   <div class="step" id="sCC" aria-disabled="true">
     <h2>Optional — MIDI CC numbers <span class="tag">Experimental</span></h2>
-    <p class="note">Choose the CC numbers the synth macros and drum knobs send and respond to, so they can control other gear. Leave them as they are to install the verified firmware unchanged.</p>
+    <p class="note">Choose the CC numbers the synth macros and drum knobs send and respond to, so they can control other gear. Leave them as they are to install the selected firmware unchanged.</p>
     <details id="ccPanel">
       <summary>Change CC numbers</summary>
       <div class="row" style="margin-top: .8rem">
@@ -122,15 +129,15 @@
       <div class="cc-grid" id="ccSynth"></div>
       <div class="cc-group">Drum knobs — drum channel</div>
       <div class="cc-grid" id="ccDrums"></div>
-      <p class="note">Use 1–119, except 6, 32, 38 and 98–101. The new number is used for MIDI out and MIDI in. If another Circuit parameter on the same channel already uses it, the two swap, and a note under the field says which parameter moves where. The knobs still control the Circuit’s own sound too.</p>
-      <p class="note">The Korg NTS-1 preset is tested on hardware. Other maps use the same table edit and are checked against the Circuit’s own MIDI code in emulation. To undo, upload again with stock numbers.</p>
+      <p class="note">Use 1–119, except 6, 32, 38 and 98–101. The new number is used for MIDI out and MIDI in. If another Circuit parameter on the same channel already uses it, the two swap, and a note under the field says which parameter moves where. The knobs still control the Circuit’s own sound too. On performance v2, synth CC 1 is reserved for the mod-wheel source.</p>
+      <p class="note">The Korg NTS-1 preset was tested on the previous v0.5.0 build. The performance-v2 combination is checked in emulation; hardware testing is still needed. To undo, upload again with stock numbers.</p>
     </details>
     <div id="ccResult" class="note" aria-live="polite"></div>
   </div>
 
   <div class="step" id="s4" aria-disabled="true">
     <h2>Step 3 — Upload</h2>
-    <p class="note" id="uploadWhat">Installs the verified firmware, unchanged.</p>
+    <p class="note" id="uploadWhat">Installs the selected firmware, unchanged.</p>
     <div class="row">
       <button id="send">Start upload</button>
       <button id="cancel" class="ghost" disabled>Cancel</button>
@@ -141,7 +148,7 @@
   </div>
 </main>
 
-<script src="cc-remap.js"></script>
+<script src="cc-remap.js?v=perf-v2"></script>
 <script>
 (() => {
   "use strict";
@@ -151,10 +158,43 @@
     base: null, baseMessages: null,
     controls: null, custom: null, ccBusy: false, ccError: null, ccToken: 0, ccTimer: 0, preset: "stock", downloadUrl: null,
   };
-  const firmwareUrl = "firmware/circuit-3592-filter-lfo-shift-automation.syx";
-  const firmwareHash = "7ea9affe4c5310a8c3d84abf6c05b1ee35d4ef9ee6d30bb040711a4eb047745f";
-  const messageCount = 5981;
   const cc = window.CircuitCC;
+  const builds = {
+    "perf-v2": {
+      label: "Performance v2 (experimental)",
+      file: "circuit-3592-extended-v0.5.0-perf-v2-feature.syx",
+      hash: "085f4decb43efb3c2738a1ef08851e42939c6e77c10bdb334ba70d70babf0d2e",
+      imageHash: "4355394aa331989dc61770f6b3e56ab215c2be9fbab5d0a241ea02c75ea7e225",
+      references: cc && cc.PERF_V2_REFERENCE_BUILDS,
+      status: "Pitch bend worked in a hardware test on 2026-10-09. One unexplained crash was reported, followed by stable operation; modulation was later reported inconsistent. Long-term stability is unconfirmed. Choose v0.5.0 above to roll back.",
+    },
+    v050: {
+      label: "Extended v0.5.0",
+      file: "circuit-3592-filter-lfo-shift-automation.syx",
+      hash: "7ea9affe4c5310a8c3d84abf6c05b1ee35d4ef9ee6d30bb040711a4eb047745f",
+      imageHash: "1a3e6593e5cff6ec415b070fd1f93c618637f0520dae3af54b4d82a07c53d22e",
+      references: cc && cc.REFERENCE_BUILDS,
+      status: "Previous build, hardware-tested on 2026-07-31. Includes Scale Follow, Sample Start, distortion selection, Filter LFO and Shift automation. Does not include the performance-v2 MIDI controls.",
+    },
+  };
+  const requestedBuild = new URLSearchParams(window.location.search).get("firmware");
+  const buildKey = requestedBuild === "v050" ? "v050" : "perf-v2";
+  const firmware = builds[buildKey];
+  const firmwareUrl = "firmware/" + firmware.file;
+  const firmwareHash = firmware.hash;
+  const messageCount = 5981;
+  $("firmwareChoice").value = buildKey;
+  $("firmwareStatus").textContent = firmware.status;
+  $("firmwareStatus").className = buildKey === "perf-v2" ? "note warn" : "note";
+  $("performanceHelp").hidden = buildKey !== "perf-v2";
+  $("firmwareDownload").href = firmwareUrl;
+  $("uploadWhat").textContent = "Installs " + firmware.label + ".";
+  $("firmwareChoice").onchange = () => {
+    if (state.uploading) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("firmware", $("firmwareChoice").value);
+    window.location.assign(url.href);
+  };
 
   const enable = (el, on) => el.setAttribute("aria-disabled", on ? "false" : "true");
   const say = (msg, cls = "") => { $("status").className = "note " + cls; $("status").textContent = msg; };
@@ -268,13 +308,13 @@
     try {
       if (!cc) throw new Error("the CC module did not load");
       const { image } = cc.decodeFirmware(state.base);
-      if (await cc.sha256Hex(image) !== cc.EXTENDED_V050_IMAGE_SHA256) throw new Error("image hash mismatch");
+      if (await cc.sha256Hex(image) !== firmware.imageHash) throw new Error("image hash mismatch");
       cc.checkLayout(image);
       cc.checkStockCCs(image);
       state.controls = cc.uiControls(image);
     } catch (err) {
       $("ccResult").replaceChildren(el("span", "warn",
-        "CC options are unavailable (" + String(err && err.message || err) + "). The verified firmware can still be installed."));
+        "CC options are unavailable (" + String(err && err.message || err) + "). The selected firmware can still be installed."));
       return;
     }
     for (const control of state.controls) {
@@ -329,7 +369,9 @@
     for (const control of state.controls) {
       const text = control.input.value.trim();
       const value = Number(text);
-      const reason = text === "" ? "enter 1–119" : cc.reservedReason(value);
+      const reason = text === "" ? "enter 1–119"
+        : (buildKey === "perf-v2" && control.part === "synth" && value === 1)
+          ? "CC 1 is reserved for mod wheel" : cc.reservedReason(value);
       control.input.classList.toggle("invalid", !!reason);
       control.input.classList.toggle("changed", !reason && value !== control.stock);
       control.hint.textContent = reason ? (reason === "not a CC number" ? "use 1–119" : reason) : "";
@@ -343,7 +385,7 @@
     state.messages = state.baseMessages;
 
     if (invalid) {
-      state.ccError = "Fix the highlighted numbers, or press Reset to install the verified firmware unchanged.";
+      state.ccError = "Fix the highlighted numbers, or press Reset to install the selected firmware unchanged.";
     } else if (requests.length) {
       state.ccBusy = true;
       checkReady();
@@ -351,7 +393,7 @@
         const build = cc.buildRemappedSysex(state.base, requests);
         const hash = await cc.sha256Hex(build.sysex);
         if (token !== state.ccToken) return;
-        const reference = cc.REFERENCE_BUILDS[state.preset];
+        const reference = firmware.references[state.preset];
         if (reference && reference !== hash) throw new Error("the build does not match the reference " + cc.PRESETS[state.preset].label + " build");
         const messages = split(build.sysex);
         if (messages.length !== messageCount) throw new Error("message count mismatch");
@@ -395,8 +437,8 @@
       return;
     }
     if (!state.custom) {
-      out.replaceChildren(el("span", "", "Stock CC numbers: the verified firmware will be installed unchanged."));
-      $("uploadWhat").textContent = "Installs the verified firmware, unchanged.";
+      out.replaceChildren(el("span", "", "Stock CC numbers: the selected firmware will be installed unchanged."));
+      $("uploadWhat").textContent = "Installs " + firmware.label + " with stock CC numbers.";
       return;
     }
     const list = el("ul");
@@ -407,10 +449,10 @@
     state.downloadUrl = URL.createObjectURL(new Blob([state.custom.sysex], { type: "application/octet-stream" }));
     const link = el("a", "", "Download this build");
     link.href = state.downloadUrl;
-    link.download = "circuit-extended-v0.5.0-cc-" + state.preset + ".syx";
+    link.download = "circuit-extended-" + buildKey + "-cc-" + state.preset + ".syx";
     extra.append(link);
-    out.replaceChildren(el("span", "ok", "Custom firmware ready. Only the MIDI CC tables differ from the verified firmware:"), list, hash, extra);
-    $("uploadWhat").textContent = "Installs the verified firmware with your MIDI CC numbers.";
+    out.replaceChildren(el("span", "ok", "Custom firmware ready. Only the MIDI CC tables differ from the selected firmware:"), list, hash, extra);
+    $("uploadWhat").textContent = "Installs " + firmware.label + " with your MIDI CC numbers.";
   }
 
   /* ---------- Upload ---------- */
@@ -423,10 +465,11 @@
     if (!state.output || !state.messages || state.ccBusy || state.ccError) return;
     const messages = state.messages;
     const changes = state.custom ? "\n\nIncludes your MIDI CC numbers:\n" + ordered(state.custom.changes).map(describe).join("\n") : "";
-    if (!confirm("Upload firmware to “" + state.output.name + "”?" + changes + "\n\nDo not unplug anything until it finishes.")) return;
+    if (!confirm("Upload " + firmware.label + " to “" + state.output.name + "”?" + changes + "\n\nDo not unplug anything until it finishes.")) return;
 
     state.cancel = false;
     state.uploading = true;
+    $("firmwareChoice").disabled = true;
     enable($("sCC"), false);
     $("send").disabled = true; $("cancel").disabled = false;
     const total = messages.length;
@@ -454,6 +497,7 @@
       }
     } finally {
       state.uploading = false;
+      $("firmwareChoice").disabled = false;
       $("send").disabled = false; $("cancel").disabled = true;
       if (state.controls) enable($("sCC"), true);
     }

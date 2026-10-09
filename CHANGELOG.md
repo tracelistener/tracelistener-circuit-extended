@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Default the browser uploader and CC-remap CLI to the exact performance-v2 build tested on 2026-10-09; retain v0.5.0 as an uploader rollback choice.
+- Add pitch-bend, mod-wheel and channel-aftertouch receive on the synth note channels. Write the DSP smoother’s X-memory targets to fix v1’s decaying bend and zipper noise.
+- Label performance v2 experimental: bend worked, one unexplained crash was followed by stable operation, and modulation was later reported inconsistent. Long-term stability remains unconfirmed.
+- Publish portable build, dispatcher, DSP-target and setter-stream verification sources and a temporary patch-routing helper.
+- Keep CC remaps compatible with both published bases, with separate NTS-1 reference hashes. Reserve synth CC 1 on performance v2 to avoid a second control responding alongside the mod-wheel source.
+
+### Earlier CC-remap work
+
 - Add optional MIDI CC numbers to the browser uploader: choose the CCs the synth macros and drum knobs send and respond to.
 - Rewrite only the CC tables of the verified v0.5.0 image, in the browser; the NTS-1 preset changes 19 bytes.
 - Add a Korg NTS-1 preset: Macro 1/2 send CC 54/55 (oscillator shape/alt) and Macro 5/6 send CC 43/44 (filter cutoff/resonance).

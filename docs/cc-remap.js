@@ -1,6 +1,6 @@
 /* Circuit Extended: MIDI CC remap, browser port of cc-remap/circuit_cc_remap_patch.py.
  *
- * Rewrites the MIDI CC tables of the verified uploader image in the browser.
+ * Rewrites the MIDI CC tables of the selected uploader image in the browser.
  * Forward (transmit) records are 8 bytes, [param_lo, param_hi, type, offset,
  * min, max, b6, b7]; b6 == 0xFF marks a CC whose number is b7.  Reverse
  * (receive) tables are 128 little-endian int16 record indexes, 0x8000 unmapped.
@@ -26,6 +26,9 @@
 
   const EXTENDED_V050_SYSEX_SHA256 = "7ea9affe4c5310a8c3d84abf6c05b1ee35d4ef9ee6d30bb040711a4eb047745f";
   const EXTENDED_V050_IMAGE_SHA256 = "1a3e6593e5cff6ec415b070fd1f93c618637f0520dae3af54b4d82a07c53d22e";
+
+  const PERF_V2_SYSEX_SHA256 = "085f4decb43efb3c2738a1ef08851e42939c6e77c10bdb334ba70d70babf0d2e";
+  const PERF_V2_IMAGE_SHA256 = "4355394aa331989dc61770f6b3e56ab215c2be9fbab5d0a241ea02c75ea7e225";
 
   // The dispatcher consumes the NRPN/RPN numbers before the reverse table is
   // consulted; 0 and 32 are Bank Select; 120-127 are channel mode messages.
@@ -82,6 +85,8 @@
   const REFERENCE_BUILDS = {
     nts1: "d4e63fadfd10a532bb61c56673da4dfc7fb8b426745f3493efdde2853d764f0a",
   };
+
+  const PERF_V2_REFERENCE_BUILDS = { nts1: "4fcf2c276cf49885d4e40c4d6a5727f872bd0b43a5da40822a3423fe785eadfd" };
 
   const off = address => address - BASE;
   const u16 = (image, at) => image[at] | (image[at + 1] << 8);
@@ -247,6 +252,10 @@
   }
 
   // requests: [[control, cc], ...] or {control: cc}; order matters exactly as in Python.
+  function hasPerformanceControls(image) {
+    return sameBytes(image.slice(off(0x08020508), off(0x08020508) + 4), [0xe7, 0xf7, 0x6c, 0xbe]);
+  }
+
   function planRemap(image, requests) {
     const entries = Array.isArray(requests) ? requests : Object.entries(requests);
     const byPart = new Map();
@@ -254,6 +263,9 @@
       const reason = reservedReason(cc);
       if (reason) throw new Error(control + ": CC " + cc + " cannot be assigned (" + reason + ")");
       const { part, record } = resolveControl(image, control);
+      if (cc === 1 && part.name === "synth" && hasPerformanceControls(image)) {
+        throw new Error("synth CC 1 is reserved for the performance build's mod-wheel source");
+      }
       if (!forwardCCMap(image, part).has(record)) throw new Error(control + " is not a CC control");
       if (!byPart.has(part.name)) byPart.set(part.name, new Map());
       const wanted = byPart.get(part.name);
@@ -323,6 +335,9 @@
     checkLayout(image);
     const patched = new Uint8Array(image);
     const maps = finalMaps(image, changes);
+    if (hasPerformanceControls(image) && [...maps.synth.values()].includes(1)) {
+      throw new Error("synth CC 1 is reserved for the performance build's mod-wheel source");
+    }
     for (const name of PART_ORDER) {
       const part = PARTS[name];
       for (const [record, cc] of maps[name]) patched[off(part.forward + RECORD_SIZE * record + 7)] = cc;
@@ -342,7 +357,7 @@
 
   /* ---------- Page helpers ---------- */
 
-  // Build a remapped SysEx from the verified uploader SysEx.  Synchronous;
+  // Build a remapped SysEx from the selected uploader SysEx. Synchronous;
   // hash the result with sha256Hex before trusting it.
   function buildRemappedSysex(baseSysex, requests) {
     const { image: base, messages } = decodeFirmware(baseSysex);
@@ -403,6 +418,7 @@
 
   const api = {
     PARTS, PRESETS, REFERENCE_BUILDS, EXTENDED_V050_SYSEX_SHA256, EXTENDED_V050_IMAGE_SHA256,
+    PERF_V2_REFERENCE_BUILDS, PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, hasPerformanceControls,
     reservedReason, isAssignable, splitMessages, decodeFirmware, encodeFirmware,
     checkLayout, checkStockCCs, forwardCCMap, resolveControl, planRemap, applyRemap,
     expectedOffsets, buildRemappedSysex, uiControls, parameterName, describeChange, sha256Hex,

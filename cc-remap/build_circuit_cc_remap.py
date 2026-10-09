@@ -6,15 +6,15 @@ Run from anywhere; paths resolve from the repository root:
     python cc-remap\\build_circuit_cc_remap.py --preset nts1
     python cc-remap\\build_circuit_cc_remap.py --label mine --map synth.macro1=74 --map synth.macro2=71
 
-The default base is the verified browser-uploader image
-(docs/firmware/circuit-3592-filter-lfo-shift-automation.syx), so every
-Circuit Extended feature is kept.  --base-sysex also accepts a legitimate
+The default base is the experimental performance-v2 browser-uploader image.
+--base-sysex also accepts the published v0.5.0 image or a legitimate
 stock 1.8 build 3592 update.  Pass --stock-sysex to write a stock recovery
 copy beside the output.
 
 Controls: synth.macro1..synth.macro8, drum1..drum4.{patch,level,pitch,decay,
 distortion,filter,pan}, or <synth|drums|session>.cc<N> for whatever sends
-stock CC N.  Numbers 1-119 are allowed except 6, 32, 38 and 98-101.
+stock CC N. Numbers 1-119 are allowed except 6, 32, 38 and 98-101.
+Synth CC 1 is also reserved on performance-v2 for the mod-wheel source.
 """
 
 from __future__ import annotations
@@ -33,9 +33,12 @@ sys.stdout.reconfigure(encoding="utf-8")
 from circuit_cc_remap_patch import (
     EXTENDED_V050_IMAGE_SHA256,
     EXTENDED_V050_SYSEX_SHA256,
+    PERF_V2_IMAGE_SHA256,
+    PERF_V2_SYSEX_SHA256,
     PARTS,
     PRESETS,
     REFERENCE_BUILDS,
+    PERF_V2_REFERENCE_BUILDS,
     RESERVED_CCS,
     STOCK_IMAGE_SHA256,
     STOCK_SYSEX_SHA256,
@@ -46,6 +49,7 @@ from circuit_cc_remap_patch import (
     expected_offsets,
     final_maps,
     forward_cc_map,
+    has_performance_controls,
     parse_assignment,
     plan_remap,
     sha256,
@@ -53,9 +57,10 @@ from circuit_cc_remap_patch import (
 from circuit_fw_tools import decode_firmware, encode_firmware
 
 
-DEFAULT_BASE = ROOT / "docs" / "firmware" / "circuit-3592-filter-lfo-shift-automation.syx"
+DEFAULT_BASE = ROOT / "docs" / "firmware" / "circuit-3592-extended-v0.5.0-perf-v2-feature.syx"
 OUTPUT_ROOT = ROOT / "build" / "cc-remap"
 BASES = {
+    PERF_V2_SYSEX_SHA256: ("extended-v0.5.0-perf-v2", PERF_V2_IMAGE_SHA256),
     EXTENDED_V050_SYSEX_SHA256: ("extended-v0.5.0", EXTENDED_V050_IMAGE_SHA256),
     STOCK_SYSEX_SHA256: ("stock", STOCK_IMAGE_SHA256),
 }
@@ -77,6 +82,8 @@ def print_map(image: bytes) -> None:
             print(f"  CC {cc:3d}  {describe(part, record, cc)}")
     reserved = ", ".join(str(cc) for cc in sorted(RESERVED_CCS) if cc)
     print(f"assignable CC numbers: 1-119 except {reserved}")
+    if has_performance_controls(image):
+        print("synth CC 1 is additionally reserved for the performance mod-wheel source")
 
 
 def main() -> None:
@@ -126,7 +133,9 @@ def main() -> None:
     decoded, _ = decode_firmware(sysex)
     if decoded != image or len(sysex) != len(base_sysex):
         raise SystemExit("rebuilt SysEx failed the fixed-size round trip")
-    reference = REFERENCE_BUILDS.get(args.preset) if not args.map and base_name == "extended-v0.5.0" else None
+    references = {"extended-v0.5.0": REFERENCE_BUILDS,
+                  "extended-v0.5.0-perf-v2": PERF_V2_REFERENCE_BUILDS}.get(base_name, {})
+    reference = references.get(args.preset) if not args.map else None
     if reference and sha256(sysex) != reference:
         raise SystemExit(f"preset {args.preset} does not match its reference build {reference}")
 

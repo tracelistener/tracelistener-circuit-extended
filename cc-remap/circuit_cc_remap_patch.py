@@ -36,6 +36,9 @@ STOCK_SYSEX_SHA256 = "260a72ebd10208aae44f7c01ad18a79cf1d7ad32658ecd1dee0d5215c0
 EXTENDED_V050_IMAGE_SHA256 = "1a3e6593e5cff6ec415b070fd1f93c618637f0520dae3af54b4d82a07c53d22e"
 EXTENDED_V050_SYSEX_SHA256 = "7ea9affe4c5310a8c3d84abf6c05b1ee35d4ef9ee6d30bb040711a4eb047745f"
 
+PERF_V2_SYSEX_SHA256 = "085f4decb43efb3c2738a1ef08851e42939c6e77c10bdb334ba70d70babf0d2e"
+PERF_V2_IMAGE_SHA256 = "4355394aa331989dc61770f6b3e56ab215c2be9fbab5d0a241ea02c75ea7e225"
+
 TX_ROUTINE = 0x08015618
 TX_TABLE_POINTERS = 0x0802E730
 RX_LOOKUP = 0x08014AEC
@@ -123,6 +126,9 @@ PRESETS = {
 REFERENCE_BUILDS = {
     "nts1": "d4e63fadfd10a532bb61c56673da4dfc7fb8b426745f3493efdde2853d764f0a",
 }
+
+
+PERF_V2_REFERENCE_BUILDS = {"nts1": "4fcf2c276cf49885d4e40c4d6a5727f872bd0b43a5da40822a3423fe785eadfd"}
 
 
 @dataclass(frozen=True)
@@ -256,6 +262,10 @@ def parse_assignment(text: str) -> tuple[str, int]:
     return control.strip(), int(value, 0)
 
 
+def has_performance_controls(image: bytes) -> bool:
+    return image[offset(0x08020508):offset(0x08020508) + 4] == bytes.fromhex("e7f76cbe")
+
+
 def plan_remap(image: bytes, requests: dict[str, int]) -> list[Change]:
     """Plan the moves for the requested {control: new CC} assignments.
 
@@ -269,6 +279,8 @@ def plan_remap(image: bytes, requests: dict[str, int]) -> list[Change]:
             reason = RESERVED_CCS.get(cc, "channel mode message" if 120 <= cc <= 127 else "not a CC number")
             raise ValueError(f"{control}: CC {cc} cannot be assigned ({reason})")
         part, record = resolve_control(image, control)
+        if cc == 1 and part.name == "synth" and has_performance_controls(image):
+            raise ValueError("synth CC 1 is reserved for the performance build's mod-wheel source")
         if record not in forward_cc_map(image, part):
             raise ValueError(f"{control}: record {record} is not a CC control")
         wanted = by_part.setdefault(part.name, {})
@@ -334,6 +346,8 @@ def expected_offsets(image: bytes, changes: list[Change]) -> list[int]:
 
 def apply_remap(image: bytes, changes: list[Change]) -> bytes:
     check_layout(image)
+    if has_performance_controls(image) and 1 in final_maps(image, changes)["synth"].values():
+        raise ValueError("synth CC 1 is reserved for the performance build's mod-wheel source")
     patched = bytearray(image)
     for name, forward in final_maps(image, changes).items():
         part = PARTS[name]

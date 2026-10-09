@@ -41,6 +41,10 @@ from circuit_cc_remap_patch import (
     CC_SEND_HELPER,
     EXTENDED_V050_IMAGE_SHA256,
     EXTENDED_V050_SYSEX_SHA256,
+    PERF_V2_IMAGE_SHA256,
+    PERF_V2_SYSEX_SHA256,
+    PERF_V2_REFERENCE_BUILDS,
+    has_performance_controls,
     MIDI_MESSAGE_SEND,
     PARTS,
     PRESETS,
@@ -245,23 +249,37 @@ def planner_tests(base_image: bytes) -> int:
 
 
 def reference_tests() -> int:
-    base_sysex = UPLOADER_BASE.read_bytes()
-    if sha256(base_sysex) != EXTENDED_V050_SYSEX_SHA256:
-        raise AssertionError("uploader base SysEx changed")
-    base_image, messages = decode_firmware(base_sysex)
-    if sha256(base_image) != EXTENDED_V050_IMAGE_SHA256:
-        raise AssertionError("uploader base image changed")
-    for preset, expected in REFERENCE_BUILDS.items():
-        sysex = encode_firmware(apply_remap(base_image, plan_remap(base_image, PRESETS[preset])), messages)
-        if sha256(sysex) != expected:
-            raise AssertionError(f"preset {preset} no longer matches its reference build")
-    return len(REFERENCE_BUILDS)
+    bases = (
+        (UPLOADER_BASE, EXTENDED_V050_SYSEX_SHA256, EXTENDED_V050_IMAGE_SHA256, REFERENCE_BUILDS),
+        (UPLOADER_BASE.with_name("circuit-3592-extended-v0.5.0-perf-v2-feature.syx"),
+         PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, PERF_V2_REFERENCE_BUILDS),
+    )
+    checks = 0
+    for path, sysex_hash, image_hash, references in bases:
+        base_sysex = path.read_bytes()
+        if sha256(base_sysex) != sysex_hash:
+            raise AssertionError("uploader base SysEx changed")
+        base_image, messages = decode_firmware(base_sysex)
+        if sha256(base_image) != image_hash:
+            raise AssertionError("uploader base image changed")
+        if has_performance_controls(base_image):
+            expect_error(base_image, {"synth.macro5": 1}, "reserved")
+            expect_error(base_image, {"synth.cc74": 1}, "reserved")
+        else:
+            assert plan_remap(base_image, {"synth.macro5": 1})
+        for preset, expected in references.items():
+            sysex = encode_firmware(apply_remap(base_image, plan_remap(base_image, PRESETS[preset])), messages)
+            if sha256(sysex) != expected:
+                raise AssertionError(f"{path.name}: preset {preset} no longer matches its reference build")
+            checks += 1
+    return checks
 
 
 def browser_module_tests() -> int:
     """Crude drift guard: the browser port must declare the same constants."""
     source = BROWSER_MODULE.read_text(encoding="utf-8").lower()
-    needles = [EXTENDED_V050_SYSEX_SHA256, EXTENDED_V050_IMAGE_SHA256, *REFERENCE_BUILDS.values()]
+    needles = [EXTENDED_V050_SYSEX_SHA256, EXTENDED_V050_IMAGE_SHA256, *REFERENCE_BUILDS.values(),
+               PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, *PERF_V2_REFERENCE_BUILDS.values()]
     for part in PARTS.values():
         needles += [f"{part.forward:#010x}", f"{part.reverse:#010x}", f"{part.rx_literal:#010x}"]
     missing = [needle for needle in needles if needle.lower() not in source]
