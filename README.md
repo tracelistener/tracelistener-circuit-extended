@@ -24,7 +24,7 @@ Use Chrome or Edge. The page loads and verifies the firmware automatically—no 
 | Shift + Scales | Toggle Scale Follow. It starts enabled after boot. |
 | Shift + Macro 3/4 | Move Sample Start for the first/second drum in the active pair. |
 | Shift + Macro 5/6 | Select one of seven stock distortion algorithms for the first/second drum. Steps on every encoder step and wraps from the last type to the first; the selectors build below moves one type per three steps. |
-| Shift + Macro 7/8 | Select Filter LFO Off or eight speeds, slow to fast: four triangle, then four sawtooth. Moves one choice per three encoder steps and stops at Off and the fastest sawtooth; the selectors build below wraps instead. |
+| Shift + Macro 7/8 | Select Filter LFO Off or eight speeds, slow to fast: four triangle (~0.4–2.9 Hz), then four sawtooth (~6–47 Hz). Moves one choice per three encoder steps and stops at Off and the fastest sawtooth; the selectors build below wraps instead, and the LFO speeds build changes the speeds. The LFO is free-running, not tempo-synced. |
 | Record + Shift Macro | Record and replay Sample Start, Distortion Type, and Filter LFO movements. |
 | Clear + Macro 3–8 clockwise | Perform the stock blue-LED reset and reset the corresponding new Shift-Macro control: Sample Start, Distortion Type, or Filter LFO. The selectors build no longer resets the Filter LFO. |
 | Clear + Macro counter-clockwise | Keep the stock red-LED automation-delete behavior. |
@@ -55,6 +55,23 @@ SHA-256:
 
 ```text
 54aa4e9ac25f87d16d796be6740fbbb35ee55bf496c31f2fb0db3be5c4551480
+```
+
+### LFO speeds build (untested)
+
+[Download Performance v2 + selectors + new Filter LFO speeds](docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-lfo-rates.syx), or choose it in the uploader. It is the selectors build with one change: the eight Filter LFO choices.
+
+| Shift + Macro 7/8 from Off | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Shape | triangle | sawtooth | triangle | sawtooth | triangle | sawtooth | triangle | sawtooth |
+| Speed | ~0.73 Hz | ~0.73 Hz | ~1.5 Hz | ~1.5 Hz | ~2.9 Hz | ~2.9 Hz | ~5.9 Hz | ~5.9 Hz |
+
+Speed only goes up as you turn clockwise, and the old 12–47 Hz sawtooth buzz is gone. The LFO still runs freely and drifts against the beat; tempo sync is planned as a separate build. Checked in a DSP emulator only; not yet tested on hardware. [Details](performance/README.md#filter-lfo-speeds).
+
+SHA-256:
+
+```text
+258b413ca23fdea23129f0c0040d1eb206543299965d6610feaf1929b2bd996b
 ```
 
 ## Performance v2 — experimental

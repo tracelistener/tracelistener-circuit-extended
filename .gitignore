@@ -8,6 +8,7 @@ __pycache__/
 !docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-feature.syx
 !docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-detents.syx
 !docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-selectors.syx
+!docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-lfo-rates.syx
 *.bin
 *.circuitpack
 build/

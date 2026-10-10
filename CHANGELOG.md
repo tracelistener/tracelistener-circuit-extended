@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add an untested **LFO speeds** build: the selectors build with Filter LFO choices Off, then ~0.73, 1.5, 2.9 and 5.9 Hz, each as a triangle and then a sawtooth. The old audio-rate sawtooth speeds are removed. The uploader offers it as a fourth choice.
+- Add a DSP-level verifier using the open-source dsp56300 disassembler and emulator, with a small harness that runs the drum LFO routine (`performance/dsp_lfo_harness`).
+- Document where the Circuit keeps its tempo for the DSP, and why tempo sync does not yet fit.
+
 - Replace the detents uploader choice with a **selectors** build. It keeps the Distortion Type change and adds Filter LFO fixes. Old `?firmware=perf-v2-detents` links open it.
 - Record a hardware test of the detented Distortion Type selector on 2026-10-09: the stepping works well.
 - Make Shift + Macro 7/8 Filter LFO wrap between Off and the fastest sawtooth instead of stopping at both ends (selectors build).

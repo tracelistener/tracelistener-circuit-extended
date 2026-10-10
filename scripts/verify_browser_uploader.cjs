@@ -81,6 +81,8 @@ async function page(key, corrupt = false) {
       references: cc.PERF_V2_REFERENCE_BUILDS, status: /unexplained crash/ },
     "perf-v2-selectors": { file: "circuit-3592-extended-v0.5.0-perf-v2-selectors.syx", hash: cc.SELECTORS_SYSEX_SHA256,
       references: cc.SELECTORS_REFERENCE_BUILDS, status: /emulation only/ },
+    "perf-v2-lfo-rates": { file: "circuit-3592-extended-v0.5.0-perf-v2-lfo-rates.syx", hash: cc.LFO_RATES_SYSEX_SHA256,
+      references: cc.LFO_RATES_REFERENCE_BUILDS, status: /DSP emulator only/ },
     v050: { file: "circuit-3592-filter-lfo-shift-automation.syx", hash: cc.EXTENDED_V050_SYSEX_SHA256,
       references: cc.REFERENCE_BUILDS, status: /Previous build/ },
   }[selected];
@@ -140,7 +142,8 @@ async function page(key, corrupt = false) {
   await page(null);
   await page("v050");
   await page("perf-v2-selectors");
+  await page("perf-v2-lfo-rates");
   await page("perf-v2-detents");
   await page(null, true);
-  console.log("PASS: default, selectors (and old detents link) and rollback selection; exact base and NTS-1 bytes; CC1 guard; reset; upload locking; corrupt firmware refused (mock MIDI).");
+  console.log("PASS: default, selectors (and old detents link), LFO-rates and rollback selection; exact base and NTS-1 bytes; CC1 guard; reset; upload locking; corrupt firmware refused (mock MIDI).");
 })().catch(error => { console.error(error); process.exitCode = 1; });

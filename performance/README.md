@@ -107,6 +107,35 @@ The verifier confirms that only the two slots changed, that nothing else loads t
 
 Not addressed by either layer: the end-stop limit (the wrap keeps every choice reachable, but turning toward the end stop still registers nothing) and the shared, unreset step counter described in the main README. The same callback runs when any of the drum's parameters are refreshed, so guessing a direction at an end stop could step the selector without a knob turn.
 
+## Filter LFO speeds
+
+`build_circuit_lfo_rates.py` adds a third layer to the selectors build and publishes `docs/firmware/circuit-3592-extended-v0.5.0-perf-v2-lfo-rates.syx` (SHA-256 `258b413ca23fdea23129f0c0040d1eb206543299965d6610feaf1929b2bd996b`). Not yet tested on hardware.
+
+The drum Filter LFO is a 35-word DSP routine at `P:$0001..$0023`. It used the mode (12..19) as the left shift applied to the audio-block counter `X:$65`. With 1500 blocks per second, the rates were 0.37..2.9 Hz triangle, then 5.9..47 Hz sawtooth. The new routine is the same size, keeps the entry, mode validation, Off path and depth maths, and the `saw`, `mod` and `off` labels stay at the same addresses. Only the rate and shape selection change:
+
+- rate shift = (mode >> 1) + 7, giving 13, 13, 14, 14, 15, 15, 16, 16: about 0.73, 1.5, 2.9 and 5.9 Hz;
+- even modes are triangle, odd modes sawtooth. The low mode bit is shifted into `b0` bit 23 and tested with `btst`.
+
+The ARM side is unchanged. Modes are still Off and 12..19, so the selector, wrap, recorder and playback code is byte-identical to the selectors build. Recorded LFO automation from earlier builds replays with the new speed and shape for each mode.
+
+```sh
+python performance/build_circuit_lfo_rates.py
+sh performance/dsp_lfo_harness/build.sh /tmp/dsp56300-work      # optional, needs git, cmake, g++
+python performance/verify_circuit_lfo_rates.py build/circuit-lfo-rates/circuit-3592-extended-v0.5.0-perf-v2-lfo-rates.syx \
+  --dsp-emulator /tmp/dsp56300-work/lfo_harness \
+  --disassembler /tmp/dsp56300-work/build/source/disassemble/dsp56kDisassemble
+```
+
+Without the optional tools, the verifier checks that only the 35 DSP words changed and that the label positions are unchanged. With the [dsp56300](https://github.com/dsp56300/dsp56300) disassembler, every new word must disassemble to the intended instruction. With its emulator, the shipped routine and the new routine are each run on 4,000 random cases through `performance/dsp_lfo_harness` and compared with Python models. The shipped routine has to match first, which checks the harness and the fixed-point model before the new routine is judged. Both take at most 29 instructions per call.
+
+### Tempo sync findings (not implemented)
+
+Notes for a future tempo-synced build:
+
+- On every tempo change, the ARM computes x = BPM × 2³² / 60000 at `0x0801DAFE` (BPM range 40–240) and calls `0x08016C9C`. That writes **`X:$15` = x × 96** (top 24 bits) and **`X:$16`**, proportional to 1/BPM. The boot default is 120 BPM. External MIDI clock reaches the same writer.
+- The stock synth's tempo-synced LFO step is `X:$15 × X:($87B + i) >> X:$40` (DSP `P:$06F2`, `P:$0FD4`). The ARM fills `X:$87B..$89D` at boot (`0x08009106`) from the cycle lengths at `0x08025B00`, in 24-per-beat ticks: 6 = 1/16, 24 = one beat, 96 = one bar. Using the same formula makes the drum LFO match the synth's sync exactly, whatever the block length. If `X:$40` is 0, the formula implies 32-sample blocks at 48 kHz, matching the Hz values above.
+- Blocker: tempo sync needs about 10 more DSP words than the 35-word slot holds. `P:$0024..$003D`, `P:$0070..$00B3` and `P:$00DC..$00FF` hold ARM code (sample playback helper, Distortion wrapper, automation decoder). The zero runs in the main program are data tables. Freeing room means moving or shrinking the 70-byte ARM sample playback helper at `0x08025BE0`.
+
 ## Implementation
 
 The hook at ARM `0x08020508` branches to a 92-byte handler in the unused newlib startup area at `0x080081E4`. It calls the stock DSP setter and resumes the original dispatcher. Only 91 bytes differ from v0.5.0.

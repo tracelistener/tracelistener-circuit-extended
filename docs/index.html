@@ -104,6 +104,7 @@
     <select id="firmwareChoice">
       <option value="perf-v2">Performance v2 — pitch bend, mod wheel and aftertouch (experimental)</option>
       <option value="perf-v2-selectors">Performance v2 + improved Shift selectors (experimental)</option>
+      <option value="perf-v2-lfo-rates">Performance v2 + selectors + new Filter LFO speeds (untested)</option>
       <option value="v050">Extended v0.5.0 — previous hardware-tested build</option>
     </select>
     <p class="note" id="firmwareStatus"></p>
@@ -149,7 +150,7 @@
   </div>
 </main>
 
-<script src="cc-remap.js?v=perf-v2-selectors"></script>
+<script src="cc-remap.js?v=perf-v2-lfo-rates"></script>
 <script>
 (() => {
   "use strict";
@@ -176,6 +177,14 @@
       imageHash: "90cc398f9d1034fa58a41fed316665301aeb212e8a18c411aa7f02a4e8be3311",
       references: cc && cc.SELECTORS_REFERENCE_BUILDS,
       status: "Performance v2 plus: Shift + Macro 5/6 moves one Distortion Type per three encoder steps (tested on hardware 2026-10-09). Shift + Macro 7/8 Filter LFO now wraps between Off and the fastest speed, and turning Filter no longer switches the LFO Off; Clear no longer resets the LFO. The Filter LFO changes are verified in emulation only. Choose Performance v2 or v0.5.0 above to roll back.",
+    },
+    "perf-v2-lfo-rates": {
+      label: "Performance v2 with improved Shift selectors and new Filter LFO speeds",
+      file: "circuit-3592-extended-v0.5.0-perf-v2-lfo-rates.syx",
+      hash: "258b413ca23fdea23129f0c0040d1eb206543299965d6610feaf1929b2bd996b",
+      imageHash: "b7d8f076f9179d719a4b1eae062f97aa9f5d4e0922d37ae89713c09d53232694",
+      references: cc && cc.LFO_RATES_REFERENCE_BUILDS,
+      status: "The selectors build plus new Filter LFO speeds: Off, then about 0.7, 1.5, 2.9 and 5.9 Hz, each as a triangle and then a sawtooth, so speed only goes up as you turn. Free-running, not tempo-synced. Checked in a DSP emulator only; not yet tested on hardware. Choose the selectors build, Performance v2 or v0.5.0 above to roll back.",
     },
     v050: {
       label: "Extended v0.5.0",

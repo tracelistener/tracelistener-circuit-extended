@@ -33,6 +33,8 @@
   const DETENTS_IMAGE_SHA256 = "ee276e53b8b51ef72df4f14636e1494b1b24963dd1dd02e3bfb6fff14b332496";
   const SELECTORS_SYSEX_SHA256 = "54aa4e9ac25f87d16d796be6740fbbb35ee55bf496c31f2fb0db3be5c4551480";
   const SELECTORS_IMAGE_SHA256 = "90cc398f9d1034fa58a41fed316665301aeb212e8a18c411aa7f02a4e8be3311";
+  const LFO_RATES_SYSEX_SHA256 = "258b413ca23fdea23129f0c0040d1eb206543299965d6610feaf1929b2bd996b";
+  const LFO_RATES_IMAGE_SHA256 = "b7d8f076f9179d719a4b1eae062f97aa9f5d4e0922d37ae89713c09d53232694";
 
   // The dispatcher consumes the NRPN/RPN numbers before the reverse table is
   // consulted; 0 and 32 are Bank Select; 120-127 are channel mode messages.
@@ -93,6 +95,7 @@
   const PERF_V2_REFERENCE_BUILDS = { nts1: "4fcf2c276cf49885d4e40c4d6a5727f872bd0b43a5da40822a3423fe785eadfd" };
   const DETENTS_REFERENCE_BUILDS = { nts1: "cf6fe24afc297ccf641f94daa2d0021ecc25d11a7ea62baeb5ff5db64fa1d8be" };
   const SELECTORS_REFERENCE_BUILDS = { nts1: "649b371e68aa8035967c7f21e6bba1da61282187d35478389e35119d7aa47c8c" };
+  const LFO_RATES_REFERENCE_BUILDS = { nts1: "03da9871e127684da65ff2ad3ea4f5def31946fccc1e34e3b6ea4ce67c3c9c6a" };
 
   const off = address => address - BASE;
   const u16 = (image, at) => image[at] | (image[at + 1] << 8);
@@ -427,6 +430,7 @@
     PERF_V2_REFERENCE_BUILDS, PERF_V2_SYSEX_SHA256, PERF_V2_IMAGE_SHA256, hasPerformanceControls,
     DETENTS_REFERENCE_BUILDS, DETENTS_SYSEX_SHA256, DETENTS_IMAGE_SHA256,
     SELECTORS_REFERENCE_BUILDS, SELECTORS_SYSEX_SHA256, SELECTORS_IMAGE_SHA256,
+    LFO_RATES_REFERENCE_BUILDS, LFO_RATES_SYSEX_SHA256, LFO_RATES_IMAGE_SHA256,
     reservedReason, isAssignable, splitMessages, decodeFirmware, encodeFirmware,
     checkLayout, checkStockCCs, forwardCCMap, resolveControl, planRemap, applyRemap,
     expectedOffsets, buildRemappedSysex, uiControls, parameterName, describeChange, sha256Hex,
